@@ -217,6 +217,10 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: host
+      - name: Initialize Windows networking provider
+        shell: powershell
+        # The first CIM query on a fresh ARM runner can exceed the SSH tool's 30-second timeout.
+        run: Get-NetTCPConnection -State Listen -ErrorAction Stop | Out-Null
       - name: Build
         working-directory: apps/desktop
         # Unsigned for now: SmartScreen warns on first launch until the app has a code signing certificate.
