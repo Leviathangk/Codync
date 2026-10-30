@@ -12,10 +12,13 @@ locks and Windows runs them in parallel too. A test that fails and then passes o
 reported as FLAKY instead of failing the run: fix it rather than lean on the retry.
 
 Desktop release CI builds x64 on `windows-latest` and ARM64 on `windows-11-arm`, then smoke-tests
-each bundled host. Installers, checksums and blockmaps use `codync-windows-<arch>.exe` names.
+each installed host after running the installer and checking the native app/host executable headers.
+Installers, checksums and blockmaps use `codync-windows-<arch>.exe` names.
 Both builds contribute to one `latest.yml` update feed, uploaded only after both installers;
 electron-updater selects the file matching the installed app's architecture. The pinned computer-use
 driver and UI Automation helper remain x64 and run through Prism on ARM64 Windows 11.
+Windows packaging forces the supported BCJ archive filter: the bundled NSIS decoder silently skips
+executables compressed with modern 7z ARM64 filters, even when the installer reports success.
 For a manual CI check, dispatch **Release desktop** with `windows_only` enabled to build both
 Windows architectures without requiring Mac signing secrets or running Linux packaging.
 

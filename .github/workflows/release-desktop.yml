@@ -195,8 +195,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: windows-latest, arch: x64, target: x86_64-pc-windows-msvc, unpacked: win-unpacked }
-          - { os: windows-11-arm, arch: arm64, target: aarch64-pc-windows-msvc, unpacked: win-arm64-unpacked }
+          - { os: windows-latest, arch: x64, target: x86_64-pc-windows-msvc }
+          - { os: windows-11-arm, arch: arm64, target: aarch64-pc-windows-msvc }
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -231,8 +231,24 @@ jobs:
           npm run dist:win:main -- --${{ matrix.arch }} --publish never
           cd dist
           sha256sum codync-windows-${{ matrix.arch }}.exe > codync-windows-${{ matrix.arch }}.exe.sha256
+      - name: Install and verify native executables
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installer = Join-Path $PWD 'apps\desktop\dist\codync-windows-${{ matrix.arch }}.exe'
+          $installation = Join-Path $env:LOCALAPPDATA 'Programs\codync-desktop'
+          $process = Start-Process -FilePath $installer -ArgumentList '/S','/currentuser',('/D='+$installation) -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Installer failed: $($process.ExitCode)" }
+          $expectedMachine = if ('${{ matrix.arch }}' -eq 'arm64') { 0xaa64 } else { 0x8664 }
+          foreach ($name in @('Codync.exe','resources\codync-host.exe','resources\codync-hostw.exe')) {
+            $bytes = [IO.File]::ReadAllBytes((Join-Path $installation $name))
+            $offset = [BitConverter]::ToInt32($bytes,60)
+            $machine = [BitConverter]::ToUInt16($bytes,$offset+4)
+            if ($machine -ne $expectedMachine) { throw "Wrong installed architecture: $name" }
+          }
+          "CODYNC_INSTALLED_RESOURCES=$installation\resources" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
       - name: Smoke test the bundled host
-        working-directory: apps/desktop/dist/${{ matrix.unpacked }}/resources
+        working-directory: ${{ env.CODYNC_INSTALLED_RESOURCES }}
         run: |
           ./codync-host.exe --version
           CODYNC_HOME="$RUNNER_TEMP/codync" ./codync-host.exe serve --port 19333 &
