@@ -90,8 +90,7 @@ win:
   icon: resources/icon.png
   target:
     - target: nsis
-      arch: x64
-  artifactName: codync-windows-x64.${ext}
+  artifactName: codync-windows-${arch}.${ext}
   # The host ships inside the app, as on macOS: a per-user install keeps its path stable for
   # the sign-in entry that starts it.
   extraResources:
