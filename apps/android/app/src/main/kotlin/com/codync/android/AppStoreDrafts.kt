@@ -90,7 +90,6 @@ fun AppStore.sendDraft(key: String, botId: String, text: String, replyTo: ReplyQ
         mutableState.update { it.copy(drafts = it.drafts - key) }
         persistDrafts()
         onQueued()
-        ReviewPrompt.sent(application, send.nonce)
         action("send:" + send.nonce) { deliver(send) }
     }
 }

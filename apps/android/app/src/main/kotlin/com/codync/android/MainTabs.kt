@@ -29,9 +29,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.platform.LocalContext
 import com.codync.android.core.Bot
-import com.codync.android.core.ReviewCancellation
 import com.codync.android.design.*
 
 internal enum class AppTab { Bots, State, Settings }
@@ -47,12 +45,6 @@ internal enum class AppTab { Bots, State, Settings }
     val open = states.firstOrNull { it.selectedBot != null }
     // Opening a bot (notification, widget, link) always lands on the Bots tab.
     if (open != null && tab != AppTab.Bots) onTab(AppTab.Bots)
-    // Leaving a chat whose answer was read may invite a rating, once the roster has stayed clear (iOS `RootView`).
-    val context = LocalContext.current
-    ReviewOnReturn(open?.let { "${app.contextId}/${it.computer.id}/${it.selectedBot}" })
-    ReviewInvitationEffect(covered || tab != AppTab.Bots || open != null || states.isEmpty() || states.any { state ->
-        !state.settledForReview || state.bots.any { it.status in listOf("working", "needsInput", "error") }
-    })
     AnalyticsOnAppear(AnalyticsEvent.ScreenViewed(when (tab) {
         AppTab.Bots -> AnalyticsScreen.Bots
         AppTab.State -> AnalyticsScreen.State
@@ -84,10 +76,7 @@ internal enum class AppTab { Bots, State, Settings }
             }
         }
     }) {
-        // A touch on the roster turns down a waiting invitation, as on the iPhone.
-        Box(Modifier.fillMaxSize().tabLayer(tab == AppTab.Bots).pointerInput(Unit) {
-            awaitPointerEventScope { while (true) { awaitPointerEvent(PointerEventPass.Initial); ReviewPrompt.cancel(context, ReviewCancellation.Interaction) } }
-        }) {
+        Box(Modifier.fillMaxSize().tabLayer(tab == AppTab.Bots)) {
             // A chat's entry names its computer and bot; it keeps its state while sliding away.
             var shown by remember { mutableStateOf<AppState?>(null) }
             if (open != null) shown = open

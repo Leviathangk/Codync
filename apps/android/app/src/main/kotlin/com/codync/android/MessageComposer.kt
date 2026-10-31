@@ -50,7 +50,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
@@ -116,9 +115,6 @@ private enum class Trailing { Interrupt, Stop, Call, Send }
     // Dictation stops with its chat or draft (another chat, an artifact's box) and when the box goes.
     val dictation = remember(draftKey) { Dictation(context, scope) }
     DisposableEffect(dictation) { onDispose { dictation.stop() } }
-    // Typing, files or dictation here hold off reading results and any rating invitation.
-    var focused by remember { mutableStateOf(false) }
-    ReviewInterruption(focused || files.isNotEmpty() || dictation.listening || dictation.transcribing)
     val photos = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(10)) { uris ->
         if (uris.isNotEmpty()) store.importFiles(uris) { store.addDraftFiles(draftKey, it) }
     }
@@ -219,7 +215,7 @@ private enum class Trailing { Interrupt, Stop, Call, Send }
                     if (ctrlEnter && trailing == Trailing.Send && canSend) send()
                     ctrlEnter
                 }
-                BasicTextField(state = text, enabled = !queuing, modifier = Modifier.weight(1f).focusRequester(focus).onFocusChanged { focused = it.isFocused }.contentReceiver(receiver).then(sendKey).padding(vertical = 10.dp),
+                BasicTextField(state = text, enabled = !queuing, modifier = Modifier.weight(1f).focusRequester(focus).contentReceiver(receiver).then(sendKey).padding(vertical = 10.dp),
                     textStyle = Type.body.copy(color = Palette.text), cursorBrush = SolidColor(Palette.accent),
                     lineLimits = TextFieldLineLimits.MultiLine(maxHeightInLines = 8),
                     decorator = { input -> Box { if (text.text.isEmpty()) Text(placeholder, style = Type.body, color = Palette.tertiary, maxLines = 1, overflow = TextOverflow.Ellipsis); input() } })

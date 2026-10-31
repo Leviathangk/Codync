@@ -62,19 +62,6 @@ internal sealed class AnalyticsEvent(val name: String) {
     data class SettingChanged(val setting: PhoneSetting, val on: Boolean) : AnalyticsEvent("setting_changed") {
         override val properties get() = mapOf("setting" to setting.json, "on" to JsonPrimitive(on))
     }
-    /** An eligible, viewed result was followed by returning to Bots (iOS `reviewOpportunity`). */
-    data class ReviewOpportunity(val completed: Int) : AnalyticsEvent("review_opportunity") {
-        override val properties get() = mapOf("completed_interactions" to JsonPrimitive(completed), "policy" to JsonPrimitive("v1"),
-            "trigger" to JsonPrimitive("return_to_bots"))
-    }
-    data class ReviewCancelled(val reason: com.codync.android.core.ReviewCancellation) : AnalyticsEvent("review_cancelled") {
-        override val properties get() = mapOf("reason" to JsonPrimitive(reason.wire), "policy" to JsonPrimitive("v1"))
-    }
-    /** The cooldown is used up and Google Play is about to be asked; not that a prompt showed. */
-    data class ReviewRequested(val completed: Int) : AnalyticsEvent("review_requested") {
-        override val properties get() = mapOf("completed_interactions" to JsonPrimitive(completed), "policy" to JsonPrimitive("v1"),
-            "trigger" to JsonPrimitive("return_to_bots"))
-    }
     /** Rate on Google Play, in Settings (iOS `reviewLinkOpened`). */
     data object ReviewLinkOpened : AnalyticsEvent("review_link_opened") {
         override val properties get() = mapOf("source" to JsonPrimitive("settings"))

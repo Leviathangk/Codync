@@ -47,6 +47,11 @@ class AccountStore(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) { PushPreferences.splitSwitch(getApplication()) }
             transitions.withLock { loadContext(null) }
+            launch {
+                try { NativeAccounts.signInForDevelopment(getApplication()) }
+                catch (cancelled: CancellationException) { throw cancelled }
+                catch (error: Exception) { mutableState.update { it.copy(error = "Couldn't sign in to the test account: ${error.message}") } }
+            }
             NativeAccounts.observe(viewModelScope) { account ->
                 mutableState.update { it.copy(account = account) }
                 if (account.ready) transitions.withLock {
@@ -197,7 +202,6 @@ class AccountStore(application: Application) : AndroidViewModel(application) {
 
     fun setForeground(active: Boolean) {
         foreground = active
-        ReviewPrompt.setActive(getApplication(), active)
         PushDelivery.foreground = active || stores.value.any { it.state.value.voice != null }
         for (store in stores.value) store.setForeground(active)
         if (active && !state.value.loading) refreshCloud()

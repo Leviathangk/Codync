@@ -66,6 +66,23 @@ final class AccountSession {
             telemetryEnabled: false,
             redirectConfig: .init(redirectUrl: "\(scheme)://callback", callbackUrlScheme: scheme)
         ))
+        if key.hasPrefix("pk_test_"), let ticket = env["CODYNC_DEV_SIGN_IN_TICKET"], !ticket.isEmpty {
+            Task { await signInForDevelopment(ticket: ticket) }
+        }
+    }
+
+    /// A worktree's simulator signs into its sandbox's Clerk test account with a one-time token from
+    /// `npm run phone-account`, as the desktop sandbox does; only against Clerk's development instance, and only while signed out.
+    private func signInForDevelopment(ticket: String) async {
+        guard let clerk else { return }
+        for _ in 0..<200 where !clerk.isLoaded { try? await Task.sleep(for: .milliseconds(100)) }
+        guard clerk.isLoaded, !isSignedIn else { return }
+        do {
+            let signIn = try await clerk.auth.signInWithTicket(ticket)
+            if let session = signIn.createdSessionId { try await clerk.auth.setActive(sessionId: session) }
+        } catch {
+            errorMessage = "Couldn't sign in to the test account: \(error.localizedDescription)"
+        }
     }
 
     /// The signed-in session's JWT for the Codync cloud (Clerk caches it for a minute).

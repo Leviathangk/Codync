@@ -157,7 +157,7 @@ into its frame.
 ## Store review invitations (iPhone App Store, Android Google Play)
 
 These events use the existing phone sender, identity, environment, version and analytics
-opt-out; Android sends the same events around Google Play's in-app review. No conversation content, message nonce, bot ID or review text is included.
+opt-out. Android sends only `review_link_opened` until it has the invitation. No conversation content, message nonce, bot ID or review text is included.
 
 | Event | When | Properties |
 | --- | --- | --- |

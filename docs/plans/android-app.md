@@ -29,7 +29,7 @@ emulator against a real host; device acceptance is listed separately.
 | Live updates | Android 16 Live updates (`ProgressStyle`), the status bar chip on Android 16 QPR1 (API 36.1) | Background updates need FCM in the deployment |
 | Version check | `VersionMismatch.MIN_HOST`, the host's `minApp`, the update card in the roster and in place of the composer (Update Codync opens Google Play; greyed out while Play doesn't have the version yet), the newer-release reminder (`AppUpdates.kt`, Play's in-app update info) | Set `MIN_HOST` to the first release that ships Android support when it's cut |
 | Remote screen | Ported: viewer from Computers, the chat header (watch a bot, then take over) and `codync-dev://screen`; WebRTC H.264, trackpad and direct touch, long-press drag, two-finger scroll, pinch zoom streaming the visible region, keyboard with IME and modifier keys, clipboard, displays, take over/hand back, Rotate, trickle ICE that keeps the video through a channel reconnect | Pinch, IME composition and a hardware keyboard on a device; TURN relay path and renewal |
-| Analytics | Ported: PostHog feature events with the Settings switch (and its sheet), crash reports sent on the next launch; Rate on Google Play, Report an issue and the rating invitation (Play in-app review, iOS policy) | — |
+| Analytics | Ported: PostHog feature events with the Settings switch (and its sheet), crash reports sent on the next launch; Rate on Google Play and Report an issue | The rating invitation, with the Play release |
 | Packaging | Debug, R8 release signed with the Play upload key, `versionCode` from the version, Firebase (`codync-auth`) and private configuration, `Submit Android` to Google Play (internal testing since 2.24.0) | Production access (closed test), see [Before a Play release](#before-a-play-release) |
 
 ## Gates before merge into dev
@@ -44,7 +44,10 @@ emulator against a real host; device acceptance is listed separately.
 
 Where the Android app still falls short, as of 2026-11-01. Everything else in the table above
 was walked through on an emulator against a real host (several computers: two disposable hosts
-on one emulator, 2026-10-31). Push delivery was walked on 2026-11-01: a debug build with Firebase
+on one emulator, 2026-10-31). The account flows were walked on 2026-11-01 against the dev cloud, with the emulator
+signed into a worktree sandbox's test account (`npm run phone-account`, [Dev app isolation](../guides/dev-app.md#worktree-sandboxes)):
+the sandbox computer in the account, Ask for access approved on the computer, *Revoke this phone's access* (the cloud
+grant is revoked, the card goes back to *Ask for access*), and an older copy of the computer shown as such. Push delivery was walked on 2026-11-01: a debug build with Firebase
 (`-PcodyncGoogleServicesFile=<google-services.json>`) on the Google APIs emulator, killed, got a bot's
 *Task complete* alert through the dev relay and FCM (pushes wait while any phone, an iOS simulator
 included, is connected to that computer).
@@ -53,13 +56,12 @@ included, is connected to that computer).
 
 | What | Code | What it needs |
 | --- | --- | --- |
-| Revoke this phone's access (also on Remove of a computer approved through the account); removing older copies of the computer from the account | `core/.../CloudClient.kt` (`revokeAccess`, `removeComputer`), `AccountStoreAccount.kt`, `ComputersView.kt` | A signed-in account on the emulator or a phone; only request tests cover it |
 | Push on a phone running the Play build, and the background Live update refresh | `PushService.kt`, `AppStoreNotifications.kt` | A phone with the official build; alert delivery through FCM is verified on the emulator |
-| OpenAI Realtime, Gemini Live and Speech mode with a real key | `WebRtcPeer.kt`, `core/.../OpenAIRealtimeEngine.kt`, `GeminiLiveEngine.kt`, `CloudSpeechEngine.kt` | A provider key on the paired computer; the fallback to on-device voice is verified |
+| OpenAI Realtime and Speech mode with a real key | `WebRtcPeer.kt`, `core/.../OpenAIRealtimeEngine.kt`, `CloudSpeechEngine.kt` | A valid OpenAI key on the paired computer. Gemini Live was walked on 2026-11-01: the session reached Gemini's `setupComplete` and listened, on the key saved on Codync Dev. The OpenAI key saved on the production host was rejected (*Incorrect API key*), and the call fell back to on-device voice with its notice |
 | Remote screen: Chinese IME composition, a hardware keyboard, the TURN relay path and its credential renewal | `ScreenKeys.kt`, `ScreenSession.kt`, `ScreenView.kt` | A computer it's safe to type into, and a signed-in host for the relay; viewing, trackpad and pinch zoom are verified |
 | On-device voice with a live microphone | `PlatformSpeech.kt`, `LocalVoiceAudio.kt` | A phone; on the emulator the recognizer was fed the speech fixture |
 | Camera QR pairing (focus and 1080p frames), launcher widget refresh, foldables, TalkBack end to end | `QrViewfinder.kt`, `CodyncWidgets.kt` | Physical devices; portrait lock with the rotating screen viewer, 130% text and TalkBack's Move up/down were checked on the emulator |
-| Google Play's review prompt, and update info from Play itself | `AppUpdates.kt`, `ReviewPrompt.kt` | An install from Google Play (a debug build gets neither); the review policy has unit tests, and `AppUpdatesTest` drives the update reminder and *Update Codync* through Play's `FakeAppUpdateManager` |
+| Update info from Google Play itself | `AppUpdates.kt` | An install from Google Play (a debug build gets none); `AppUpdatesTest` drives the update reminder and *Update Codync* through Play's `FakeAppUpdateManager` |
 
 ### Different from the iPhone on purpose or by platform
 
@@ -115,8 +117,9 @@ the Dynamic Island) with its feature graphic, per language.
 - [ ] Move the default push relay URL into `apps/shared/Config/{dev,main}.plist` (iOS reads
   them as `AccountConfig.plist`), so the Android build stops parsing the iOS kit's
   `SharedStore.swift` and iPhone-only edits there stop counting as Android changes.
-- [x] *Rate on Google Play* and *Report an issue* in the Settings tab, and the rating invitation through
-  Play's in-app review API ([review invitation](../features/ios-review-invitation.md)), since 2026-10-31.
+- [x] *Rate on Google Play* and *Report an issue* in the Settings tab, since 2026-10-31.
+- [ ] The rating invitation through Play's in-app review API, with the iPhone's policy
+  ([review invitation](../features/ios-review-invitation.md)): left out until the app is on Google Play.
 - [ ] *Release to production* permission for `codync-play`, then `PLAY_TRACK=production`.
 
 ## Shared deployment
@@ -124,7 +127,9 @@ the Dynamic Island) with its feature graphic, per language.
 The host accepts Android pairing (older hosts refuse it, and the app asks to update
 Codync on the computer) and counts Android event streams as connected phones, so
 pushes are held while one is open. The cloud accepts Android device records through
-the `0004_android_devices.sql` migration. The push Worker needs the matching Firebase
+the `0004_android_devices.sql` migration, applied to dev on 2026-11-01. Main gets it right after the next `dev` → `main`
+merge, together with that release's cloud deploy ([migration log](../guides/environments-and-deployment.md#migration-log)).
+Until then, signed-in Android phones can't register with the production account. The push Worker needs the matching Firebase
 service account as an external secret; the client configuration contains no private key.
 
 ![Android roster](../screenshots/android-roster.png)

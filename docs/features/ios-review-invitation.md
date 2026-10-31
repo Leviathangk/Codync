@@ -44,11 +44,10 @@ is unavailable. Never treat a StoreKit attempt or a manual link tap as a submitt
 
 ## Platform scope
 
-The iPhone uses StoreKit. Since 2026-10-31 the Android app follows the same policy with Google Play's in-app
-review API (`core/Review.kt` for the policy, `ReviewPrompt.kt` for the hooks): a send from the composer, a
-finished answer read in its chat, returning to Bots, then two clear seconds before Play is asked. Play decides
-whether its dialog shows; Android's Settings has **Rate on Google Play** and **Report an issue**. Desktop
-Settings and help menu and terminal settings have no store review capability and keep their behavior.
+The iPhone uses StoreKit. The Android app has no invitation until it is on Google Play (the owner's call,
+2026-11-01): its Settings has **Rate on Google Play** and **Report an issue**, and the invitation comes with the
+Play release, through Play's in-app review API and this same policy. Desktop Settings and help menu and terminal
+settings have no store review capability and keep their behavior.
 
 ## Validation (2026-10-26)
 
