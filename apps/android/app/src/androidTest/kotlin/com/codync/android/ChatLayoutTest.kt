@@ -7,7 +7,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.lifecycle.ViewModelProvider
 import androidx.test.platform.app.InstrumentationRegistry
 import com.codync.android.core.*
 import kotlinx.serialization.json.*
@@ -22,7 +21,7 @@ class ChatLayoutTest {
 
     @Test fun oneWayBotMessagesShowAttributionWithoutAStatusLine() {
         assumeTrue(Build.PRODUCT.startsWith("sdk"))
-        val store = ViewModelProvider(compose.activity)[AppStore::class.java]
+        val store = previewStore()
         val bot = Bot("handoff-preview", "Dex")
         val body = "Urgent. Investigate the connection error."
         val heading = "Message from Miles: $body"
@@ -30,7 +29,7 @@ class ChatLayoutTest {
         val entry = Entry("bot-message", 1, bot.id, rev = 1, kind = "notice", data = buildJsonObject {
             put("text", "$heading\n$detail"); put("heading", heading); put("delegationId", "request"); put("style", "error")
         })
-        val state = AppState(loading = false, selectedBot = bot.id, bots = listOf(bot),
+        val state = AppState(previewComputer, loading = false, selectedBot = bot.id, bots = listOf(bot),
             connection = LinkState.Ready(HostRoute.Direct), actualConnection = LinkState.Ready(HostRoute.Direct),
             historyComplete = setOf(bot.id), entries = listOf(entry))
         compose.runOnUiThread { compose.activity.setContent { Hosted { ChatScreen(state, store, {}) } } }
@@ -47,7 +46,7 @@ class ChatLayoutTest {
 
     @Test fun botRepliesAppearBelowTheRequestInSeparateBubbles() {
         assumeTrue(Build.PRODUCT.startsWith("sdk"))
-        val store = ViewModelProvider(compose.activity)[AppStore::class.java]
+        val store = previewStore()
         val bot = Bot("reply-preview", "Dex")
         val body = "Investigate the connection error."
         val heading = "Request from Miles: $body"
@@ -56,7 +55,7 @@ class ChatLayoutTest {
             put("text", "$heading\nReply from Dex:\n$answer"); put("heading", heading)
             put("delegationId", "request"); put("status", "completed")
         })
-        val state = AppState(loading = false, selectedBot = bot.id, bots = listOf(bot),
+        val state = AppState(previewComputer, loading = false, selectedBot = bot.id, bots = listOf(bot),
             connection = LinkState.Ready(HostRoute.Direct), actualConnection = LinkState.Ready(HostRoute.Direct),
             historyComplete = setOf(bot.id), entries = listOf(entry))
         compose.runOnUiThread { compose.activity.setContent { Hosted { ChatScreen(state, store, {}) } } }
@@ -85,12 +84,12 @@ class ChatLayoutTest {
 
     @Test fun aShortConversationStaysNearItsComposerAndRetainsContextActions() {
         assumeTrue(Build.PRODUCT.startsWith("sdk"))
-        val store = ViewModelProvider(compose.activity)[AppStore::class.java]
+        val store = previewStore()
         val bot = Bot("layout-preview", "Scout", avatarColor = "green", avatarShape = "cloud")
         val sent = "Add a weekly totals helper and check its tests."
         val reply = "I added the helper and a test. All four tests pass."
         val now = System.currentTimeMillis()
-        val state = AppState(loading = false, selectedBot = bot.id, bots = listOf(bot),
+        val state = AppState(previewComputer, loading = false, selectedBot = bot.id, bots = listOf(bot),
             connection = LinkState.Ready(HostRoute.Direct), actualConnection = LinkState.Ready(HostRoute.Direct),
             historyComplete = setOf(bot.id), entries = listOf(
                 Entry("user-layout", 1, bot.id, rev = 1, kind = "user", data = buildJsonObject { put("text", sent) }, createdAt = now),
@@ -125,9 +124,9 @@ class ChatLayoutTest {
 
     @Test fun theTitleOpensTheBotsDetailsOnDetails() {
         assumeTrue(Build.PRODUCT.startsWith("sdk"))
-        val store = ViewModelProvider(compose.activity)[AppStore::class.java]
+        val store = previewStore()
         val bot = Bot("details-preview", "Scout")
-        val state = AppState(loading = false, selectedBot = bot.id, bots = listOf(bot), historyComplete = setOf(bot.id),
+        val state = AppState(previewComputer, loading = false, selectedBot = bot.id, bots = listOf(bot), historyComplete = setOf(bot.id),
             hello = buildJsonObject { put("version", ARTIFACTS_HOST) })
         compose.runOnUiThread { compose.activity.setContent { Hosted { ChatScreen(state, store, {}) } } }
         compose.onNode(chatTitle).performClick()

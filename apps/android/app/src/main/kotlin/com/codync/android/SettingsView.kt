@@ -35,7 +35,7 @@ import com.codync.android.design.*
  * analytics, Start over; iOS `SettingsView`). Each computer's own settings (voice chat, push, connection,
  * hidden bots) are in Computer management (`ComputersView`).
  */
-@Composable internal fun SettingsView(state: AppState, store: AppStore, bottomInset: Dp) {
+@Composable internal fun SettingsView(state: AccountContext, store: AccountStore, bottomInset: Dp) {
     val uri = LocalUriHandler.current
     var confirmStartOver by remember { mutableStateOf(false) }
     var aboutAnalytics by remember { mutableStateOf(false) }

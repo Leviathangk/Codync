@@ -10,7 +10,7 @@ import kotlinx.serialization.json.*
 
 internal fun AppStore.setIcon(target: String, file: Uri? = null, url: String? = null, tinted: Boolean? = null, remove: Boolean = false) {
     action("icon:$target") {
-        require((file == null && url == null) || state.value.account.userId != null) { "Sign in to use custom images." }
+        require((file == null && url == null) || local.contextId != "local") { "Sign in to use custom images." }
         val data = file?.let { uri -> withContext(Dispatchers.IO) {
             val bytes = getApplication<Application>().contentResolver.openInputStream(uri)?.use { input ->
                 val output = java.io.ByteArrayOutputStream()

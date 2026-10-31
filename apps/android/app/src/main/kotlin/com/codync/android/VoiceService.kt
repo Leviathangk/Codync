@@ -124,7 +124,7 @@ class VoiceService : Service() {
         val call = snapshot?.voice
         val bot = snapshot?.bots?.firstOrNull { it.id == call?.botId }
         val url = Uri.Builder().scheme(BuildConfig.URL_SCHEME).authority("bot").appendPath(call?.botId.orEmpty())
-            .appendQueryParameter("scope", snapshot?.contextId).appendQueryParameter("computer", snapshot?.computers?.firstOrNull()?.id).build()
+            .appendQueryParameter("scope", snapshot?.contextId).appendQueryParameter("computer", snapshot?.computer?.id).build()
         val content = PendingIntent.getActivity(this, NOTIFICATION, Intent(this, MainActivity::class.java)
             .setAction(Intent.ACTION_VIEW).setData(url), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         fun action(kind: String) = PendingIntent.getService(this, kind.hashCode(), Intent(this, VoiceService::class.java)

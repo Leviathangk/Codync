@@ -12,7 +12,7 @@ class OnboardingTest {
     @get:Rule val compose = createComposeRule()
 
     @Test fun welcomeLeadsToInstallAndBackReturnsToWelcome() {
-        compose.setContent { Hosted { CodyncApp(AppState(loading = false), viewModel()) } }
+        compose.setContent { Hosted { CodyncApp(AccountContext(loading = false), emptyMap(), viewModel()) } }
         compose.onNodeWithText("Your coding agents", substring = true).assertIsDisplayed()
         compose.onNodeWithText("Get started").performClick()
         compose.onNodeWithText("Install Codync", substring = true).assertIsDisplayed()
@@ -23,7 +23,7 @@ class OnboardingTest {
 
     @Test fun installStepsFollowTheComputerAndScanKeepsTheChoice() {
         var skipped = false
-        compose.setContent { Hosted { PairingView(AppState(loading = false), viewModel(), onSkip = { skipped = true }) } }
+        compose.setContent { Hosted { PairingView(AccountContext(loading = false), viewModel(), onSkip = { skipped = true }) } }
         compose.onNodeWithText("Mac").assertIsSelected()
         compose.onNodeWithText("brew install --cask leepokai/codync/codync").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Linux").performClick().assertIsSelected()
@@ -46,7 +46,7 @@ class OnboardingTest {
     }
 
     @Test fun macPairingPointsToTheMenuBarApp() {
-        compose.setContent { Hosted { PairingView(AppState(loading = false), viewModel()) } }
+        compose.setContent { Hosted { PairingView(AccountContext(loading = false), viewModel()) } }
         compose.onNodeWithText("Continue").performClick()
         compose.onNodeWithText("On your Mac, click Codync in the menu bar, then Pair iPhone. The same code pairs this phone.").assertIsDisplayed()
         compose.onNodeWithText("codync-host pair").assertDoesNotExist()

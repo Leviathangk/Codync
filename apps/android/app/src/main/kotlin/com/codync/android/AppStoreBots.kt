@@ -61,7 +61,8 @@ fun AppStore.saveBot(draft: BotDraft, onSaved: () -> Unit) = action("editor") {
     val bot = HostClient.decode(result.jsonObject.getValue("bot").jsonObject)
     withContext(Dispatchers.IO) { requireNotNull(database).receive(bot) }
     refresh()
-    openBot(bot.id)
+    // A new bot or group opens its chat; an edit stays where it was made (iOS `BotEditorView.save`).
+    if (draft.id == null) openBot(bot.id)
     onSaved()
 }
 
@@ -75,7 +76,8 @@ fun AppStore.saveGroup(draft: GroupDraft, onSaved: () -> Unit) = action("editor"
     val bot = HostClient.decode(result.jsonObject.getValue("bot").jsonObject)
     withContext(Dispatchers.IO) { requireNotNull(database).receive(bot) }
     refresh()
-    openBot(bot.id)
+    // A new bot or group opens its chat; an edit stays where it was made (iOS `BotEditorView.save`).
+    if (draft.id == null) openBot(bot.id)
     onSaved()
 }
 
@@ -157,12 +159,7 @@ fun AppStore.refreshUsage(force: Boolean = true) = action("usage") {
     UsageReport.decode(response)
     withContext(Dispatchers.IO) { requireNotNull(database).apply(MirrorEvent.Usage(response)) }
     refresh()
-    widgetOwner?.let { owner ->
-        val current = state.value
-        withContext(Dispatchers.IO) { WidgetStore.publish(getApplication(), owner, current.computers.firstOrNull(),
-            current.bots, UsageReport.decode(current.usage), false, true) }
-        CodyncWidgets.update(getApplication())
-    }
+    usageRead(this)
 }
 suspend fun AppStore.selectWorkspace(path: String): String {
     return hostQuery("selectWorkspace", body("path" to path)).jsonObject["path"]?.jsonPrimitive?.content

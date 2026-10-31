@@ -3,12 +3,12 @@ package com.codync.android
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.test.platform.app.InstrumentationRegistry
 import android.graphics.Bitmap
 import java.io.File
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.Density
 import com.codync.android.core.*
 import org.junit.Assert.*
@@ -17,17 +17,18 @@ import org.junit.Test
 
 /** Read-only roster fixture: nothing here pairs, saves or sends. */
 class LayoutTest {
-    @get:Rule val compose = createComposeRule()
-    private val state = AppState(loading = false, setupComplete = true, rosterLoaded = true,
-        computers = listOf(Computer("fixture", "Acceptance computer", "fixture")),
+    @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    private val computer = Computer("fixture", "Acceptance computer", "fixture")
+    private val app = AccountContext(loading = false, setupComplete = true, computers = listOf(computer))
+    private val state = AppState(computer, loading = false, rosterLoaded = true,
         connection = LinkState.Ready(HostRoute.Direct), actualConnection = LinkState.Ready(HostRoute.Direct), bots = (1..5).map {
             Bot("bot-$it", "Bot $it", lastMessage = "A recent reply", unread = if (it == 1) 12 else 0)
         })
     private val computers = hasContentDescription("Computers,", substring = true)
     private fun tab(title: String) = hasText(title) and isSelectable()
 
-    @Test fun theRosterShowsFiveRowsAndKeepsActionsOnDemand() {
-        compose.setContent { Hosted { CodyncApp(state, viewModel()) } }
+    @Test fun theRosterShowsFiveRowsAndKeepsActionsOnDemand() = compose.withPreviewAccounts(computer) { accounts ->
+        compose.setContent { Hosted { CodyncApp(app, mapOf(computer.id to state), accounts) } }
         (1..5).forEach { compose.onNodeWithText("Bot $it").assertIsDisplayed() }
         compose.onNodeWithText("12").assertIsDisplayed()
         snapshot("roster")
@@ -53,11 +54,11 @@ class LayoutTest {
         compose.onNodeWithText("Bot 5").assertIsDisplayed()
     }
 
-    @Test fun largerTextKeepsTheHeaderControlsAndUnreadBadgeAccessible() {
+    @Test fun largerTextKeepsTheHeaderControlsAndUnreadBadgeAccessible() = compose.withPreviewAccounts(computer) { accounts ->
         compose.setContent {
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, 1.5f)) {
-                Hosted { CodyncApp(state, viewModel()) }
+                Hosted { CodyncApp(app, mapOf(computer.id to state), accounts) }
             }
         }
         val account = compose.onNodeWithContentDescription("Switch account").assertIsDisplayed().fetchSemanticsNode().boundsInRoot

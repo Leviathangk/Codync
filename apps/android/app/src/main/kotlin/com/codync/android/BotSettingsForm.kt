@@ -62,7 +62,6 @@ internal enum class FormPart { All, Often, Rarely }
                     notifyRow(draft, change); computerUseRow(state, draft, change); manageTeamRow(state, draft, change); reachRows(state, draft, change)
                 }
                 Plugins(state, draft, change) { viewingSkill = it }
-                draft.id?.let { MemoryCard(it, store) }
                 state.error?.let { Text(it, style = Type.footnote, color = Palette.danger) }
             }
             FormPart.Often -> {
@@ -122,7 +121,7 @@ private fun CardRows.fallbackBanner(state: AppState, store: AppStore, bot: Bot?)
 
 private fun CardRows.computerRow(state: AppState, online: Boolean) = row {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        ValueRow("Computer", state.computers.firstOrNull()?.name ?: "Your computer")
+        ValueRow("Computer", state.hostName)
         if (!online) OfflineNote()
     }
 }

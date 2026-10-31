@@ -376,7 +376,7 @@ private fun stateWord(bot: WidgetBot): Pair<String, Ink> = when (bot.status) {
     Column(GlanceModifier.fillMaxWidth()) {
         for (bot in bots) {
             val (word, tint) = stateWord(bot)
-            val open = if (sample) GlanceModifier else GlanceModifier.clickable(actionStartActivity(widgetIntent(context, feed, bot.id)))
+            val open = if (sample) GlanceModifier else GlanceModifier.clickable(actionStartActivity(widgetIntent(context, feed, bot)))
             Row(open.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Face(context, bot.avatarShape, bot.avatarColor, 24.dp, customIcon = bot.customIcon)
                 Spacer(GlanceModifier.width(7.dp))
@@ -397,7 +397,7 @@ private fun stateWord(bot: WidgetBot): Pair<String, Ink> = when (bot.status) {
             Row(GlanceModifier.fillMaxWidth().defaultWeight()) {
                 for ((column, bot) in row.withIndex()) {
                     if (column > 0) Spacer(GlanceModifier.width(8.dp))
-                    val open = if (sample || bot == null) GlanceModifier else GlanceModifier.clickable(actionStartActivity(widgetIntent(context, feed, bot.id)))
+                    val open = if (sample || bot == null) GlanceModifier else GlanceModifier.clickable(actionStartActivity(widgetIntent(context, feed, bot)))
                     Box(open.defaultWeight().fillMaxHeight().background(tile).cornerRadius(16.dp), contentAlignment = Alignment.Center) {
                         if (bot == null) Face(context, "blob", "gray", 26.dp)
                         else Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -411,11 +411,12 @@ private fun stateWord(bot: WidgetBot): Pair<String, Ink> = when (bot.status) {
     }
 }
 
-internal fun widgetIntent(context: Context, feed: WidgetFeed, bot: String? = null, usage: Boolean = false): Intent {
+/** Opens the app: on [bot]'s chat (on its computer), on the usage computer's Usage, or as it is. */
+internal fun widgetIntent(context: Context, feed: WidgetFeed, bot: WidgetBot? = null, usage: Boolean = false): Intent {
     val intent = Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-    val computer = feed.computerId ?: return intent
+    val computer = bot?.computerId?.ifEmpty { null } ?: feed.computerId ?: return intent
     if (bot != null || usage) intent.data = Uri.Builder().scheme(BuildConfig.URL_SCHEME).authority(if (usage) "usage" else "bot")
-        .apply { if (bot != null) appendPath(bot) }.appendQueryParameter("scope", feed.scope).appendQueryParameter("computer", computer).build()
+        .apply { if (bot != null) appendPath(bot.id) }.appendQueryParameter("scope", feed.scope).appendQueryParameter("computer", computer).build()
     return intent
 }
 

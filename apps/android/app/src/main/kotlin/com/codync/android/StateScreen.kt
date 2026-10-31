@@ -51,6 +51,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.Dp
+import kotlinx.serialization.json.JsonObject
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -70,7 +71,7 @@ private enum class Surface { Widget, LiveUpdate, StatusBar }
  * widgets, Live updates (Android's Live Activity) and the status bar chip (its Dynamic Island).
  * Usage limits open from the header.
  */
-@Composable internal fun StateScreen(state: AppState, store: AppStore?, usage: () -> Unit, bottomInset: Dp, active: Boolean = true) {
+@Composable internal fun StateScreen(app: AccountContext, report: JsonObject?, accounts: AccountStore?, usage: () -> Unit, bottomInset: Dp, active: Boolean = true) {
     var surface by rememberSaveable { mutableStateOf(Surface.Widget) }
     Column(Modifier.fillMaxSize().background(Palette.background).statusBarsPadding()) {
         ScreenHeader(title = { Text("State", style = Type.body.semibold, color = Palette.text) },
@@ -82,9 +83,9 @@ private enum class Surface { Widget, LiveUpdate, StatusBar }
             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 18.dp, end = 18.dp, top = 18.dp, bottom = bottomInset),
                 verticalArrangement = Arrangement.spacedBy(24.dp)) {
                 when (shown) {
-                    Surface.Widget -> WidgetGallery(state, store, active) { surface = Surface.LiveUpdate }
-                    Surface.LiveUpdate -> LiveUpdateGallery(state, store, chip = false)
-                    Surface.StatusBar -> LiveUpdateGallery(state, store, chip = true)
+                    Surface.Widget -> WidgetGallery(app, report, accounts, active) { surface = Surface.LiveUpdate }
+                    Surface.LiveUpdate -> LiveUpdateGallery(app, accounts, chip = false)
+                    Surface.StatusBar -> LiveUpdateGallery(app, accounts, chip = true)
                 }
             }
         }
@@ -115,13 +116,13 @@ internal fun openNotificationSettings(context: Context) = context.startActivity(
     .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
 
 /** The State tab's Widget page: the installed widgets and these previews share their layouts. */
-@Composable private fun WidgetGallery(state: AppState, store: AppStore?, active: Boolean, keepInView: () -> Unit) {
+@Composable private fun WidgetGallery(app: AccountContext, usage: JsonObject?, accounts: AccountStore?, active: Boolean, keepInView: () -> Unit) {
     val context = LocalContext.current
     val installed = rememberOnResume { runCatching { CodyncWidgets.installed(context) }.getOrNull() }
     var asked by remember { mutableIntStateOf(0) }
     val allowed = rememberOnResume { notificationsAllowed(context) } || asked > 0 && notificationsAllowed(context)
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        notificationsAnswered(context, granted, PromptSource.Widgets); asked++; store?.syncPush()
+        notificationsAnswered(context, granted, PromptSource.Widgets); asked++; accounts?.syncPush()
     }
     var kind by rememberSaveable { mutableStateOf("usage") }
     var provider by rememberSaveable { mutableStateOf("claude") }
@@ -142,7 +143,7 @@ internal fun openNotificationSettings(context: Context) = context.startActivity(
     Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
         SectionLabel("Get set up")
         Column(Modifier.fillMaxWidth().clip(RoundedRectangle(18.dp)).background(Palette.surface)) {
-            SetupRow("Connect a computer", state.computers.isNotEmpty())
+            SetupRow("Connect a computer", app.computers.isNotEmpty())
             Hairline(Modifier.padding(start = 42.dp))
             SetupRow("Add a Codync widget", installed?.let { it > 0 } == true, if (installed == null) "Unable to check" else null)
             Hairline(Modifier.padding(start = 42.dp))
@@ -164,7 +165,7 @@ internal fun openNotificationSettings(context: Context) = context.startActivity(
             Text("Sample data", style = Type.caption2, color = Palette.secondary)
         }
         ChoicePicker(kind, listOf("usage" to "Provider usage", "limits" to "Usage limits", "bots" to "Bots", "team" to "Team"), { kind = it })
-        val report = remember(state.usage) { runCatching { UsageReport.decode(state.usage) }.getOrNull() }
+        val report = remember(usage) { usage?.let { runCatching { UsageReport.decode(it) }.getOrNull() } }
         val providers = (WidgetPreview.usage.providers + report?.providers.orEmpty()).distinctBy { it.id }
         if (kind == "usage") {
             if (providers.size <= 3) SegmentedChoice(provider, providers.map { it.id to it.name }, { provider = it })

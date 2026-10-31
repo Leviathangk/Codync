@@ -35,11 +35,8 @@ import com.codync.android.core.hasLibrary
 import com.codync.android.design.*
 import kotlinx.coroutines.delay
 
-/**
- * The details sheet's pages, as on the desktop inspector; no Memory until the read-only memory screen is ported
- * (docs/plans/android-app.md).
- */
-internal enum class DetailsTab(val title: String) { Details("Details"), Library("Library"), Settings("Settings") }
+/** The details sheet's pages, as on the desktop inspector (iOS `BotDetailsView.Tab`). */
+internal enum class DetailsTab(val title: String) { Details("Details"), Library("Library"), Memory("Memory"), Settings("Settings") }
 
 /**
  * What to open the details sheet on (iOS `DetailsRequest`): a page, a routine's editor on the Details page, or another bot's
@@ -68,7 +65,7 @@ internal data class DetailsRequest(val tab: DetailsTab = DetailsTab.Details, val
         delay(600)
         store.saveSettings(draft)
     }
-    val tabs = listOfNotNull(DetailsTab.Details, DetailsTab.Library.takeIf { hasLibrary(state.hello?.text("version")) }, DetailsTab.Settings)
+    val tabs = listOfNotNull(DetailsTab.Details, DetailsTab.Library.takeIf { hasLibrary(state.hello?.text("version")) }, DetailsTab.Memory, DetailsTab.Settings)
     Box(Modifier.fillMaxSize().background(Palette.background)) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 20.dp, end = 20.dp, bottom = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally) {
@@ -84,13 +81,15 @@ internal data class DetailsRequest(val tab: DetailsTab = DetailsTab.Details, val
                             LaunchedEffect(Unit) { routineId = null }
                         }
                         DetailsTab.Library -> LibraryView(bot, state, store, openArtifact)
+                        DetailsTab.Memory -> MemoryCard(bot.id, state, store)
                         DetailsTab.Settings -> BotSettingsForm(state, store, draft, { draft = it }, FormPart.Rarely)
                     }
                 }
             }
         }
         Row(Modifier.align(Alignment.TopEnd).padding(top = 14.dp, end = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            CornerButton("Create template", "square.and.arrow.up") { template = draft }
+            // The bot as it's saved, as on the iPhone.
+            CornerButton("Create template", "square.and.arrow.up") { template = saved }
             CornerButton("Close details", "xmark", dismiss)
         }
     }

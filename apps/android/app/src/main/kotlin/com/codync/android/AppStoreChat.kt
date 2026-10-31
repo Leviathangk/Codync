@@ -10,9 +10,11 @@ import kotlinx.serialization.json.*
 
 // Conversations: opening a bot, history, sending and its retries.
 
+/** Opens a chat on this computer (the account closes any other computer's) or, with null, closes it. */
 fun AppStore.openBot(id: String?) {
+    if (id == null && state.value.selectedBot == null) return
     mutableState.update { it.copy(selectedBot = id, trace = false) }
-    if (id != null) acknowledgeVisible()
+    if (id != null) { opened(this); acknowledgeVisible() }
 }
 fun AppStore.showTrace(show: Boolean) { mutableState.update { it.copy(trace = show) } }
 
@@ -114,8 +116,8 @@ internal suspend fun AppStore.deliver(send: PendingSend) {
         refresh()
         val bot = state.value.bots.firstOrNull { it.id == send.botId }
         if (bot != null && PushPreferences.tasks(getApplication()) && getApplication<Application>().getSystemService(android.app.NotificationManager::class.java).areNotificationsEnabled()) {
-            val watch = withContext(Dispatchers.IO) { TaskFeed(local.directory).start(bot) }
-            NotificationDisplay.task(getApplication(), local.referenceId, state.value.computers.first().id, watch)
+            val watch = withContext(Dispatchers.IO) { feed.start(bot) }
+            NotificationDisplay.task(getApplication(), local.referenceId, id, watch)
             syncPush(); PushDelivery.schedule(getApplication())
         }
     } catch (error: CancellationException) {

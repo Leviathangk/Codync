@@ -41,7 +41,8 @@ import com.codync.android.core.LinkState
 import com.codync.android.design.*
 
 /** A new bot from its face and name (iOS `NewBotView`); the rest starts on the defaults and changes later in its Settings. */
-@Composable fun NewBotView(state: AppState, store: AppStore) {
+/** [computers] (ID, label) can take the bot; with more than one it can move to another before it's created ([choose]). */
+@Composable fun NewBotView(state: AppState, store: AppStore, computers: List<Pair<String, String>> = emptyList(), choose: (String) -> Unit = {}) {
     var draft by remember { mutableStateOf(BotDraft()) }
     val online = state.actualConnection is LinkState.Ready
     val dismiss = LocalDismissModal.current
@@ -50,7 +51,9 @@ import com.codync.android.design.*
     CreateLayout(state, "New bot", draft.name, { draft = draft.copy(name = it) }, "Name your bot", online, { store.saveBot(draft) { dismiss() } },
         { CharacterAvatar(draft.avatarShape, draft.avatarColor, 96.dp) }) {
         AvatarPicker(draft.avatarShape, draft.avatarColor, { draft = draft.copy(avatarShape = it) }, { draft = draft.copy(avatarColor = it) })
-        if (!online) Text("Connect this computer to create the bot.", style = Type.caption, color = Palette.warning)
+        if (computers.size > 1) ValueRow("Computer") { ChoicePicker(state.computer.id, computers, choose, label = "Computer") }
+        if (!online) Text(if (computers.size > 1) "Connect this computer to create the bot, or choose another computer."
+            else "Connect this computer to create the bot.", style = Type.caption, color = Palette.warning)
     }
 }
 

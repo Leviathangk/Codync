@@ -44,7 +44,7 @@ internal val AppState.mismatch: VersionMismatch? get() {
 
 /** Says which side has to update, shown instead of the composer and above the computer's bots. */
 @Composable internal fun UpdateNeededCard(state: AppState, mismatch: VersionMismatch, requestUpdate: () -> Unit, modifier: Modifier = Modifier) {
-    val host = state.hello?.text("name") ?: state.computers.firstOrNull()?.name ?: "your computer"
+    val host = state.hostName
     val now = rememberHostUpdateNow(state.hostUpdate)
     Row(modifier.fillMaxWidth().clip(RoundedRectangle(16.dp)).background(Palette.surface).padding(14.dp),
         verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {

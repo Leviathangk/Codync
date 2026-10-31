@@ -8,7 +8,15 @@ class WidgetFeedTest {
         val bots = listOf(Bot("idle", "Idle"), Bot("hidden", "Hidden", hidden = true),
             Bot("deleted", "Deleted", deleted = true), Bot("working", "Working", status = "working"),
             Bot("approval", "Approval", status = "needsInput"))
-        assertEquals(listOf("approval", "working", "idle"), widgetBots(bots).map { it.id })
+        assertEquals(listOf("approval", "working", "idle"), widgetBots(mapOf("mac" to bots)).map { it.id })
+    }
+
+    @Test fun `every computer's bots share one order and keep the computer they live on`() {
+        val bots = widgetBots(mapOf("mac" to listOf(Bot("a", "Mac idle"), Bot("b", "Mac working", status = "working")),
+            "linux" to listOf(Bot("a", "Linux approval", status = "needsInput"))))
+        assertEquals(listOf("linux/a", "mac/b", "mac/a"), bots.map { it.key })
+        // The same bot ID on two computers stays two spots.
+        assertEquals(listOf("mac/a", "linux/a", "mac/b", null), teamSlots(bots, listOf("mac/a", null, null, null)).map { it?.key })
     }
 
     @Test fun `team spots keep picks, skip deleted ones and fill the rest in feed order`() {

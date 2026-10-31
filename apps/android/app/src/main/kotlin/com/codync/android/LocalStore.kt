@@ -73,6 +73,10 @@ class LocalStore(context: Context, val contextId: String = "local") {
         write(AtomicFile(File(directory, "computers.json")), json.encodeToString(computers).toByteArray())
     }
 
+    /** The computer a chat was last opened or sent on (iOS `lastComputerId`). */
+    fun lastComputer(): String? = File(directory, "last-computer").takeIf { it.exists() }?.readText()?.takeIf { it.isNotBlank() }
+    fun saveLastComputer(id: String) = write(AtomicFile(File(directory, "last-computer")), id.toByteArray())
+
     fun setupComplete(): Boolean = File(directory, "setup-complete").exists()
     fun hasIdentity(): Boolean = File(directory, "identity").exists()
     fun completeSetup() = write(AtomicFile(File(directory, "setup-complete")), byteArrayOf(1))
