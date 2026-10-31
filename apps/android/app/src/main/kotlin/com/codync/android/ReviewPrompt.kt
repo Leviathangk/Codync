@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.edit
@@ -116,8 +117,10 @@ internal val AppState.settledForReview: Boolean
 @Composable internal fun ReviewInvitationEffect(blocked: Boolean) {
     val context = LocalContext.current
     val token by ReviewPrompt.opportunity.collectAsState()
-    // `request` clears the opportunity, which restarts this effect, so Play's request runs outside it.
+    // `request` clears the opportunity, which restarts this effect, so Play's request runs outside it
+    // and checks the screen again before it shows.
     val scope = rememberCoroutineScope()
+    val covered by rememberUpdatedState(blocked)
     LaunchedEffect(token, blocked) {
         val opportunity = token ?: return@LaunchedEffect
         if (blocked) { ReviewPrompt.cancel(context, ReviewCancellation.Unavailable); return@LaunchedEffect }
@@ -127,7 +130,8 @@ internal val AppState.settledForReview: Boolean
         scope.launch {
             try {
                 val manager = ReviewManagerFactory.create(context)
-                manager.launchReview(activity, manager.requestReview())
+                val review = manager.requestReview()
+                if (!covered) manager.launchReview(activity, review)
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (error: Exception) { android.util.Log.i("Codync", "Review prompt unavailable: ${error.message}") }
         }
