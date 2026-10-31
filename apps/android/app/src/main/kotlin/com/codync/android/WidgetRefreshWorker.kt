@@ -11,6 +11,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -39,11 +40,11 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
                 if (computers.isEmpty()) return@withTimeout false
                 val usageId = computers.currentId(withContext(Dispatchers.IO) { local.lastComputer() })
                 val identity = withContext(Dispatchers.IO) { local.identity() }
-                // Each computer at once; one that can't be reached keeps the bots it had (and isn't fresh).
+                // Each computer at once, each in its own 20 s; one that can't be reached keeps the bots it had (and isn't fresh).
                 val reads = coroutineScope {
                     computers.map { computer ->
                         async {
-                            try { read(computer, identity, computer.id == usageId) }
+                            try { withTimeoutOrNull(20_000) { read(computer, identity, computer.id == usageId) } }
                             catch (cancelled: CancellationException) { throw cancelled }
                             catch (error: Exception) { android.util.Log.i("Codync", "Widget refresh couldn't read ${computer.id}: ${error.message}"); null }
                         }

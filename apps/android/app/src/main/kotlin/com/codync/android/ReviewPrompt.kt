@@ -9,6 +9,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.edit
@@ -23,6 +24,7 @@ import com.google.android.play.core.ktx.launchReview
 import com.google.android.play.core.ktx.requestReview
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
@@ -114,16 +116,20 @@ internal val AppState.settledForReview: Boolean
 @Composable internal fun ReviewInvitationEffect(blocked: Boolean) {
     val context = LocalContext.current
     val token by ReviewPrompt.opportunity.collectAsState()
+    // `request` clears the opportunity, which restarts this effect, so Play's request runs outside it.
+    val scope = rememberCoroutineScope()
     LaunchedEffect(token, blocked) {
         val opportunity = token ?: return@LaunchedEffect
         if (blocked) { ReviewPrompt.cancel(context, ReviewCancellation.Unavailable); return@LaunchedEffect }
         delay(2_000)
         val activity = context as? Activity ?: return@LaunchedEffect ReviewPrompt.cancel(context, ReviewCancellation.Unavailable)
         if (!ReviewPrompt.request(context, opportunity)) return@LaunchedEffect
-        try {
-            val manager = ReviewManagerFactory.create(context)
-            manager.launchReview(activity, manager.requestReview())
-        } catch (cancelled: CancellationException) { throw cancelled }
-        catch (error: Exception) { android.util.Log.i("Codync", "Review prompt unavailable: ${error.message}") }
+        scope.launch {
+            try {
+                val manager = ReviewManagerFactory.create(context)
+                manager.launchReview(activity, manager.requestReview())
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (error: Exception) { android.util.Log.i("Codync", "Review prompt unavailable: ${error.message}") }
+        }
     }
 }
