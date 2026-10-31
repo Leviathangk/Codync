@@ -14,16 +14,21 @@ fun AppStore.command(method: String, body: JsonObject = JsonObject(emptyMap()), 
         val response = try { ready().call(method, body) }
             catch (error: CancellationException) { throw error }
             catch (error: Exception) { onFailure(); throw error }
-        response.jsonObject["bot"]?.let { value ->
-            withContext(Dispatchers.IO) { requireNotNull(database).receive(HostClient.decode(value.jsonObject)) }
-        }
-        response.jsonObject["entry"]?.let { value ->
-            withContext(Dispatchers.IO) { requireNotNull(database).receive(listOf(Entry.decode(value.jsonObject))) }
-        }
-        refresh()
+        receiveReply(response)
         onSuccess()
     }
     if (!started) onFailure()
+}
+
+/** Takes in the bot or entry a command's reply carries, then shows it. */
+private suspend fun AppStore.receiveReply(response: JsonElement) {
+    response.jsonObject["bot"]?.let { value ->
+        withContext(Dispatchers.IO) { requireNotNull(database).receive(HostClient.decode(value.jsonObject)) }
+    }
+    response.jsonObject["entry"]?.let { value ->
+        withContext(Dispatchers.IO) { requireNotNull(database).receive(listOf(Entry.decode(value.jsonObject))) }
+    }
+    refresh()
 }
 
 /** Moves a bot into the roster section [section], or out of any (null). */
@@ -69,9 +74,7 @@ fun AppStore.saveBot(draft: BotDraft, onSaved: () -> Unit) = action("editor") {
 /** A saved bot's settings from its details, saved as they're edited; [done] gets the error, or null once it took. */
 fun AppStore.saveSettings(draft: BotDraft, done: (String?) -> Unit) = action("settings:" + draft.id) {
     try {
-        val result = ready().call("updateBot", draft.body())
-        result.jsonObject["bot"]?.let { withContext(Dispatchers.IO) { requireNotNull(database).receive(HostClient.decode(it.jsonObject)) } }
-        refresh()
+        receiveReply(ready().call("updateBot", draft.body()))
         done(null)
     } catch (cancelled: CancellationException) { throw cancelled }
     catch (error: Exception) { done(error.message ?: "Couldn't save the changes.") }

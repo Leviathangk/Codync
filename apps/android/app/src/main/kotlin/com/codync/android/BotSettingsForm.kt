@@ -62,7 +62,6 @@ internal enum class FormPart { All, Often, Rarely }
                     notifyRow(draft, change); computerUseRow(state, draft, change); manageTeamRow(state, draft, change); reachRows(state, draft, change)
                 }
                 Plugins(state, draft, change) { viewingSkill = it }
-                error?.let { Text(tr(it), style = Type.footnote, color = Palette.danger) }
             }
             FormPart.Often -> {
                 CardSection("Instructions") { instructionsRow(draft, change) }
@@ -71,8 +70,6 @@ internal enum class FormPart { All, Often, Rarely }
                     agentRows(state, store, draft, change, bot) { addingFallback = true }
                     if (!online) row { OfflineNote() }
                 }
-                // A save that didn't take, where it was made (iOS `saveError`).
-                error?.let { Text(tr(it), style = Type.footnote, color = Palette.danger) }
             }
             FormPart.Rarely -> {
                 CardSection("Profile") {
@@ -83,9 +80,10 @@ internal enum class FormPart { All, Often, Rarely }
                 CardSection("Workspace") { computerRow(state, online); placeRows(draft, change) { folders = true } }
                 CardSection("Activity") { notifyRow(draft, change); manageTeamRow(state, draft, change); reachRows(state, draft, change) }
                 Plugins(state, draft, change) { viewingSkill = it }
-                error?.let { Text(tr(it), style = Type.footnote, color = Palette.danger) }
             }
         }
+        // A save that didn't take, under the form (iOS `error`).
+        error?.let { Text(tr(it), style = Type.footnote, color = Palette.danger) }
     }
     CodyncSheet(folders, { folders = false }) {
         FolderPicker(draft.cwd.ifEmpty { state.hello?.get("home")?.jsonPrimitive?.contentOrNull }, online, state.hello?.get("name")?.jsonPrimitive?.contentOrNull ?: "Computer", store::listDirs, store::selectWorkspace) {

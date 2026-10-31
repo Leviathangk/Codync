@@ -54,6 +54,8 @@ class AppStore internal constructor(
     internal var oauthRequestId: String? = null
     internal var voiceBinding: VoiceBinding? = null
     internal var voiceGeneration: Int? = null
+    /** A "Talk to Codync" call waiting for the link (`requestCall`). */
+    internal var callWait: Job? = null
     internal val transportRequired: Boolean get() = foreground || state.value.voice != null
     internal val sends = mutableSetOf<String>()
     internal val actions = mutableMapOf<String, Job>()

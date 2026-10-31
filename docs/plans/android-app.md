@@ -71,7 +71,7 @@ on one emulator, 2026-10-31).
 - **`computers` / `plugins` links** open over the current tab; iOS switches to Bots first.
 - **Shortcuts actions** (Open Live Mode, Send Text to Bot) are Apple App Intents; Android's counterparts are
   **Talk to Codync** in the app icon's shortcuts (the lead, by Settings → Shortcuts → Lead to call) and text shared
-  from another app, which opens the picked bot's chat with the text in its box ([iOS Shortcuts](../features/ios-shortcuts.md), `LiveShortcut.kt`).
+  from another app, which opens the picked bot's chat with the text in its box ([iOS Shortcuts](../features/ios-shortcuts.md), `LiveShortcut.kt`, `ShareToBot.kt`).
 - **On-device voice**: languages other than English need Android 13+ and Android's on-device
   recognizer; it never falls back to online recognition (iOS may use Apple's servers).
 - **Jump to latest** is an opaque disc: it sits in the scrolling content, so there's no blur under it.

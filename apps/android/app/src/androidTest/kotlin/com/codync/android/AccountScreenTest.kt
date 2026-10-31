@@ -142,7 +142,7 @@ class AccountScreenTest {
 
     @Test fun theSettingsTabHoldsOnlyThisPhonesSettingsAndKeepsResetBehindAConfirmation() {
         val state = fixture().copy(computers = listOf(computer))
-        compose.setContent { Hosted { SettingsView(state, viewModel(), 0.dp) } }
+        compose.setContent { Hosted { SettingsView(state, emptyList(), viewModel(), 0.dp) } }
         compose.onNodeWithText("Settings").assertIsDisplayed()
         listOf("Pair a computer", "Hidden scout", "Push notifications", "Voice chat").forEach { compose.onNodeWithText(it).assertDoesNotExist() }
         if (!BuildConfig.PUSH_CONFIGURED) compose.onNodeWithText("Push isn't set up in this build. Bots and chats still update while Codync is open.").performScrollTo().assertIsDisplayed()

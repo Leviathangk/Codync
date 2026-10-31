@@ -71,14 +71,8 @@ import kotlin.math.roundToInt
     }
 }
 
-@Composable private fun EmptyUsage(title: String, message: String) {
-    Column(Modifier.fillMaxWidth().padding(top = 60.dp, start = 24.dp, end = 24.dp), horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Symbol("chart.bar", size = 48.dp, tint = Palette.tertiary)
-        Text(tr(title), style = Type.title3.semibold, color = Palette.text, textAlign = TextAlign.Center)
-        Text(tr(message), style = Type.subheadline, color = Palette.secondary, textAlign = TextAlign.Center)
-    }
-}
+@Composable private fun EmptyUsage(title: String, message: String) =
+    EmptyState("chart.bar", title, Modifier.fillMaxWidth().padding(top = 60.dp), message)
 
 @Composable private fun ProviderCard(provider: UsageProvider) {
     var collapsed by rememberSaveable(provider.id) { mutableStateOf(false) }

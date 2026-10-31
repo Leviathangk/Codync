@@ -12,22 +12,33 @@ import kotlinx.serialization.json.*
 /** Opens a chat on this computer (the account closes any other computer's) or, with null, closes it. */
 fun AppStore.openBot(id: String?) {
     if (id == null && state.value.selectedBot == null) return
-    mutableState.update { it.copy(selectedBot = id, trace = false) }
+    // Leaving a chat drops the call "Talk to Codync" asked for there, waiting or not (iOS `cancelVoiceCallRequest`).
+    val leaving = id != state.value.selectedBot
+    if (leaving) callWait?.cancel()
+    mutableState.update { it.copy(selectedBot = id, trace = false, callRequest = it.callRequest.takeUnless { leaving }) }
     if (id != null) { opened(this); acknowledgeVisible() }
 }
 fun AppStore.showTrace(show: Boolean) { mutableState.update { it.copy(trace = show) } }
 
-/** Starts a call in [botId]'s chat once it shows; the chat takes it (`takeCallRequest`). */
-fun AppStore.requestCall(botId: String) { mutableState.update { it.copy(callRequest = botId) } }
+/**
+ * Starts a call in [botId]'s open chat once this computer is connected (iOS `requestVoiceCall`); the chat takes it
+ * (`takeCallRequest`). A computer that can't be reached is an error instead.
+ */
+fun AppStore.requestCall(botId: String) {
+    callWait?.cancel()
+    callWait = contextScope.launch {
+        val connected = withTimeoutOrNull(20_000) { state.first { it.actualConnection is LinkState.Ready } }
+        if (connected == null) showError(IOException("Can't reach the computer. Check that it's on, then try again."))
+        else mutableState.update { it.copy(callRequest = botId) }
+    }
+}
+
+/** Once: a chat that already has a call takes it too, so it can't start one later. */
 fun AppStore.takeCallRequest(botId: String): Boolean {
     if (state.value.callRequest != botId) return false
     mutableState.update { it.copy(callRequest = null) }
     return true
 }
-
-/** Puts [text] after what's in [botId]'s message box (text shared from another app). */
-fun AppStore.appendDraft(botId: String, text: String) =
-    editDraft(botId, com.codync.android.core.DictationText.join(state.value.drafts[botId]?.text.orEmpty(), text))
 
 /** The chat being read (iOS `ReadingConversation`): the open one, still on screen under Full conversation. */
 internal val AppState.readingChats: List<String> get() = listOfNotNull(selectedBot)

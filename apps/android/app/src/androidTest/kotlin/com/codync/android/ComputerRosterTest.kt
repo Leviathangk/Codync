@@ -1,6 +1,8 @@
 package com.codync.android
 
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.dp
@@ -69,11 +71,10 @@ class ComputerRosterTest {
             accounts.close(linux.id)
         }
         assertTrue(accounts.state.value.removedChat)
+        // The account's own state, as the app shows it: Back clears it there.
         compose.setContent {
-            Hosted {
-                MainTabs(app.copy(computers = listOf(mac), removedChat = true), listOf(state(mac, "Mac bot")), accounts, {}, {}, {}, {}, {},
-                    { _, _ -> }, {}, covered = true) {}
-            }
+            val live by accounts.state.collectAsState()
+            Hosted { MainTabs(live, listOf(state(mac, "Mac bot")), accounts, {}, {}, {}, {}, {}, { _, _ -> }, {}, covered = true) {} }
         }
         compose.onNodeWithText("This computer was removed").assertIsDisplayed()
         compose.onNodeWithContentDescription("Back").performClick()

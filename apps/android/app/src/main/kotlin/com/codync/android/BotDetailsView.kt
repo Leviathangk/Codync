@@ -15,6 +15,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,6 +34,7 @@ import com.codync.android.core.LinkState
 import com.codync.android.core.ScreenState
 import com.codync.android.core.hasLibrary
 import com.codync.android.design.*
+import java.io.IOException
 import kotlinx.coroutines.delay
 
 /** The details sheet's pages, as on the desktop inspector (iOS `BotDetailsView.Tab`). */
@@ -58,14 +60,17 @@ internal data class DetailsRequest(val tab: DetailsTab = DetailsTab.Details, val
     var draft by rememberBotDraft(saved, state)
     var template by remember { mutableStateOf<BotDraft?>(null) }
     val online = state.actualConnection is LinkState.Ready
+    // What the last save said, on the page where it was made (iOS `saveError`); one that fails after the page closed
+    // shows over the app instead.
+    var saveError by remember(bot.id) { mutableStateOf<String?>(null) }
+    val shown = remember { mutableStateOf(true) }
+    DisposableEffect(Unit) { onDispose { shown.value = false } }
     // Saves a moment after the last change, like the desktop inspector. Keyed on the saved bot too: an edit made while
     // the previous save was still out (and so skipped) is sent once that save lands.
-    // What the last save said, shown on the page where it was made (iOS `saveError`), not over the app.
-    var saveError by remember(bot.id) { mutableStateOf<String?>(null) }
     LaunchedEffect(draft, online, saved) {
         if (!online || !draft.isValid || draft == saved) return@LaunchedEffect
         delay(600)
-        store.saveSettings(draft) { saveError = it }
+        store.saveSettings(draft) { error -> if (shown.value) saveError = error else error?.let { store.showError(IOException(it)) } }
     }
     val tabs = listOfNotNull(DetailsTab.Details, DetailsTab.Library.takeIf { hasLibrary(state.hello?.text("version")) }, DetailsTab.Memory, DetailsTab.Settings)
     Box(Modifier.fillMaxSize().background(Palette.background)) {

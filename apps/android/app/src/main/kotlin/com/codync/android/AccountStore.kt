@@ -88,8 +88,8 @@ class AccountStore(application: Application) : AndroidViewModel(application) {
             withContext(Dispatchers.IO) { AttachmentFiles(getApplication(), local.directory).retainPending(stores.value.flatMap { it.pendingFiles() }) }
             if (userId != null) configureCloud(userId)
             mutableState.update { it.copy(loading = false) }
-            LiveShortcut.publish(getApplication(), computers.isNotEmpty())
             observeWidgets(requireNotNull(widgetOwner))
+            observeShortcut()
             refreshCloud()
         } catch (error: CancellationException) { throw error }
         catch (error: Exception) { showError(error) }
@@ -151,7 +151,6 @@ class AccountStore(application: Application) : AndroidViewModel(application) {
                 DraftBook.delete(local.directory, id)
             }
             mutableState.update { it.copy(computers = computers) }
-            LiveShortcut.publish(getApplication(), computers.isNotEmpty())
         }
     }
 
@@ -161,7 +160,6 @@ class AccountStore(application: Application) : AndroidViewModel(application) {
         val computers = if (saved.any { it.id == computer.id }) saved.map { if (it.id == computer.id) computer else it } else saved + computer
         withContext(Dispatchers.IO) { local.saveComputers(computers) }
         mutableState.update { it.copy(computers = computers) }
-        LiveShortcut.publish(getApplication(), true)
     }
 
     /**
@@ -270,6 +268,14 @@ class AccountStore(application: Application) : AndroidViewModel(application) {
                     } catch (cancelled: CancellationException) { throw cancelled }
                     catch (_: Exception) { mutableState.update { it.copy(error = "Couldn't update widgets. Open State and try again.") } }
                 }
+        }
+    }
+
+    /** The app icon's "Talk to Codync" is there while a computer is paired. */
+    private fun observeShortcut() {
+        contextScope.launch {
+            state.filter { !it.loading }.map { it.computers.isNotEmpty() }.distinctUntilChanged()
+                .collect { paired -> withContext(Dispatchers.IO) { LiveShortcut.publish(getApplication(), paired) } }
         }
     }
 

@@ -87,8 +87,8 @@ import com.kyant.shapes.Capsule
     var connector by remember { mutableStateOf<MarketConnector?>(null) }
     val connect = ConnectionRequestActions({ id, item -> setupEntry = id; app = item }, { id, item -> setupEntry = id; connector = item })
     val startCall = rememberStartVoice(bot.id, state, store) { micDenied = true }
-    // "Talk to Codync" asked for a call here.
-    LaunchedEffect(state.callRequest) { if (state.voice == null && store.takeCallRequest(bot.id)) startCall() }
+    // "Talk to Codync" asked for a call here: taken even during a call, so it can't start one after it.
+    LaunchedEffect(state.callRequest) { if (store.takeCallRequest(bot.id) && state.voice == null) startCall() }
     val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     var composerHeight by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current

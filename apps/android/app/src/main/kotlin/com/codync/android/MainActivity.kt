@@ -99,8 +99,11 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        // Rotation keeps its ViewModel/navigation; process restoration gets a fresh owner.
-        if (savedInstanceState?.getString("codync:activityOwner") != accounts.activityOwnerId) handle(intent)
+        // Rotation keeps its ViewModel/navigation; process restoration gets a fresh owner and the activity's first intent
+        // again, as does a return from Recents: its links open again, but a call or a share happened once.
+        val replayed = savedInstanceState != null || intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0
+        if (savedInstanceState?.getString("codync:activityOwner") != accounts.activityOwnerId &&
+            !(replayed && intent.action in setOf(LiveShortcut.ACTION, Intent.ACTION_SEND))) handle(intent)
     }
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putString("codync:activityOwner", accounts.activityOwnerId)
@@ -122,10 +125,10 @@ class MainActivity : ComponentActivity() {
         super.onStop()
     }
     private fun handle(intent: Intent?) {
-        if (intent?.action == LiveShortcut.ACTION) { intent.action = null; accounts.talkToLead(); return }
+        if (intent?.action == LiveShortcut.ACTION) { accounts.talkToLead(); return }
+        // Text shared from another app, handed over by `ShareActivity`.
         if (intent?.action == Intent.ACTION_SEND) {
-            intent.getStringExtra(Intent.EXTRA_TEXT)?.takeIf { it.isNotBlank() }?.let { accounts.share(it.take(64 * 1024)) }
-            intent.action = null
+            intent.getStringExtra(Intent.EXTRA_TEXT)?.takeIf { it.isNotBlank() }?.let(accounts::share)
             return
         }
         val uri = intent?.data ?: return

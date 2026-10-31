@@ -13,8 +13,6 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.material3.Text
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
@@ -107,7 +105,7 @@ private enum class AppTab { Bots, State, Settings }
         Box(Modifier.fillMaxSize().tabLayer(tab == AppTab.State)) {
             StateScreen(app, states.firstOrNull { it.computer.id == app.currentComputerId }?.usage, accounts, usage, barSpace, active = tab == AppTab.State)
         }
-        Box(Modifier.fillMaxSize().tabLayer(tab == AppTab.Settings)) { SettingsView(app, accounts, barSpace, states) }
+        Box(Modifier.fillMaxSize().tabLayer(tab == AppTab.Settings)) { SettingsView(app, states, accounts, barSpace) }
     }
 }
 
@@ -117,11 +115,7 @@ private const val REMOVED_CHAT = "removed"
 @Composable private fun RemovedComputer(back: () -> Unit) {
     Column(Modifier.fillMaxSize().background(Palette.background).statusBarsPadding()) {
         ScreenHeader(leading = { BackButton(back) })
-        Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)) {
-            Symbol("desktopcomputer.trianglebadge.exclamationmark", size = 48.dp, tint = Palette.tertiary)
-            Text(tr("This computer was removed"), style = Type.title3.semibold, color = Palette.text, textAlign = TextAlign.Center)
-        }
+        EmptyState("desktopcomputer.trianglebadge.exclamationmark", "This computer was removed", Modifier.fillMaxSize())
     }
 }
 
