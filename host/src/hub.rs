@@ -112,6 +112,7 @@ pub struct Hub {
     pub screen: Arc<Screen>,
     /// Setup terminals (installs, sign-ins).
     pub terms: Arc<crate::agent::term::Terms>,
+    pub catalogs: crate::agent::auth::Recent,
 }
 
 impl Hub {
@@ -150,6 +151,7 @@ impl Hub {
             cloud: crate::remote::cloud::Cloud::default(),
             screen,
             terms: Arc::default(),
+            catalogs: crate::agent::auth::Recent::default(),
         })
     }
 

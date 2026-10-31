@@ -1,11 +1,49 @@
 //! The models an agent offers, read from a session it opens for that alone.
 
 use super::{probe_dir, start, text};
+use crate::LockExt;
 use crate::agent::acp::Incoming;
+use crate::hub::Hub;
 use crate::store::Store;
 use anyhow::{Context, Result, bail};
 use serde_json::{Value, json};
-use std::time::Duration;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex as StdMutex};
+use std::time::{Duration, Instant};
+use tokio::sync::Mutex;
+
+/// Model lists from the last minute, by agent: a settings screen asks for one from several places at once (the model
+/// picker, Approvals), and each would otherwise start the agent.
+#[derive(Default)]
+pub struct Recent(StdMutex<HashMap<String, Slot>>);
+
+/// One agent's list and when it came; locked while it's asked for.
+type Slot = Arc<Mutex<Option<(Instant, Value)>>>;
+
+impl Recent {
+    /// `fetch`'s list for `agent`, or the one fetched in the last minute; one in progress answers those that come
+    /// meanwhile. A failure is kept by no one.
+    async fn get(&self, agent: &str, fetch: impl Future<Output = Result<Value>>) -> Result<Value> {
+        let slot = self.0.locked().entry(agent.to_owned()).or_default().clone();
+        let mut listed = slot.lock().await;
+        if let Some((at, catalog)) = listed.as_ref()
+            && at.elapsed() < Duration::from_mins(1)
+        {
+            return Ok(catalog.clone());
+        }
+        let result = fetch.await;
+        match &result {
+            Ok(catalog) => *listed = Some((Instant::now(), catalog.clone())),
+            Err(_) => drop(self.0.locked().remove(agent)),
+        }
+        result
+    }
+}
+
+/// [`models`], shared with the asks of the last minute.
+pub async fn recent_models(hub: &Hub, backend: &str) -> Result<Value> {
+    hub.catalogs.get(backend, models(&hub.store, backend)).await
+}
 
 /// Discover the agent's advertised models in an isolated, prompt-free session.
 /// This uses the same credentials as actual bot sessions and never reads project files.
@@ -197,6 +235,26 @@ fn collect_values(options: &Value, out: &mut Vec<Value>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn asks_at_once_start_the_agent_once_and_a_failure_is_asked_again() {
+        let recent = Recent::default();
+        let started = std::sync::atomic::AtomicUsize::new(0);
+        let fetch = |ok: bool| {
+            let started = &started;
+            async move {
+                started.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                tokio::time::sleep(Duration::from_millis(20)).await;
+                if ok { Ok(json!({"models": []})) } else { Err(anyhow::anyhow!("signed out")) }
+            }
+        };
+        let (a, b) = tokio::join!(recent.get("claude", fetch(true)), recent.get("claude", fetch(true)));
+        assert_eq!((a.unwrap(), b.unwrap()), (json!({"models": []}), json!({"models": []})));
+        assert_eq!(started.load(std::sync::atomic::Ordering::SeqCst), 1);
+        assert!(recent.get("codex", fetch(false)).await.is_err());
+        assert!(recent.get("codex", fetch(true)).await.is_ok());
+        assert_eq!(started.load(std::sync::atomic::Ordering::SeqCst), 3);
+    }
 
     #[tokio::test]
     async fn an_unavailable_model_keeps_other_models_and_their_options() {

@@ -176,8 +176,8 @@ impl App {
                             f.model_options = Default::default();
                             let own = f.backend.clone();
                             f.fallbacks.retain(|x| x.backend != own);
-                            // Nor its mode ids: its Auto mode, if it has one, is the only choice that carries over.
-                            f.mode = f.mode.take().filter(|m| m == crate::agent::modes::AUTO);
+                            // Nor its mode ids: a picked mode becomes the new agent's Auto mode (or, without one, asking).
+                            f.mode = f.mode.take().map(|_| crate::agent::modes::AUTO.to_owned());
                             self.want_models(&f.backend);
                         }
                     }
