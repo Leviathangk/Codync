@@ -9,7 +9,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.test.platform.app.InstrumentationRegistry
 import com.codync.android.core.*
 import com.codync.android.design.AvatarPalette
@@ -25,6 +24,7 @@ import java.io.File
 /** Read-only UI fixtures for the bot settings and the New bot / New group chat dialogs: no test taps Save or Create, so production bots are never changed. */
 class BotEditorTest {
     @get:Rule val compose = createComposeRule()
+    private val store = previewStore(Computer("fixture", "Fixture computer", "fixture-key"))
     private val scout = BotDraft(id = "fixture", name = "Scout", avatarShape = "blob", avatarColor = "blue")
 
     @Before fun isolatedEmulatorOnly() { assumeTrue(Build.PRODUCT.startsWith("sdk")) }
@@ -56,7 +56,7 @@ class BotEditorTest {
     }
 
     @Test fun aNewBotIsItsFaceAndAnOptionalName() {
-        compose.setContent { Hosted { NewBotView(fixture(), viewModel()) } }
+        compose.setContent { Hosted { NewBotView(fixture(), store) } }
         compose.onNodeWithText("New bot").assertIsDisplayed()
         compose.onNode(hasSetTextAction() and hasText("Name your bot")).assertIsDisplayed().assertIsFocused()
         compose.onNodeWithContentDescription("Create").assertIsEnabled()
@@ -70,14 +70,14 @@ class BotEditorTest {
     }
 
     @Test fun anOfflineNewBotCannotBeCreated() {
-        compose.setContent { Hosted { NewBotView(fixture().copy(actualConnection = LinkState.Connecting), viewModel()) } }
+        compose.setContent { Hosted { NewBotView(fixture().copy(actualConnection = LinkState.Connecting), store) } }
         compose.onNodeWithContentDescription("Create").assertIsNotEnabled()
         compose.onNodeWithText("Connect this computer to create the bot.").assertIsDisplayed()
     }
 
     @Test fun aNewGroupIsNamedAfterThePickedBotsUntilNamed() {
         val bots = listOf(Bot("a", "Scout", avatarShape = "blob"), Bot("b", "Reviewer", avatarShape = "hex"))
-        compose.setContent { Hosted { NewGroupView(fixture().copy(bots = bots), viewModel()) } }
+        compose.setContent { Hosted { NewGroupView(fixture().copy(bots = bots), store) } }
         compose.onNodeWithText("New group chat").assertIsDisplayed()
         compose.onNodeWithContentDescription("Create").assertIsNotEnabled()
         compose.onNode(hasSetTextAction() and hasText("Name your group")).assertIsDisplayed()
@@ -90,7 +90,7 @@ class BotEditorTest {
     }
 
     @Test fun aNewGroupWithoutBotsSaysToCreateOneFirst() {
-        compose.setContent { Hosted { NewGroupView(fixture(), viewModel()) } }
+        compose.setContent { Hosted { NewGroupView(fixture(), store) } }
         compose.onNodeWithText("No bots yet. Create a bot first.").assertIsDisplayed()
         compose.onNodeWithContentDescription("Create").assertIsNotEnabled()
     }
@@ -136,14 +136,13 @@ class BotEditorTest {
     }
 
     private fun render(draft: BotDraft, state: AppState = fixture(), close: () -> Unit = {}) {
-        compose.setContent { Hosted { CompositionLocalProvider(LocalDismissModal provides close) { BotEditor(state, draft, viewModel()) } } }
+        compose.setContent { Hosted { CompositionLocalProvider(LocalDismissModal provides close) { BotEditor(state, draft, store) } } }
     }
 
     private fun toggle(title: String) = compose.onNode(hasText(title) and isToggleable())
 
-    private fun fixture(): AppState = AppState(loading = false, setupComplete = true,
-        actualConnection = LinkState.Ready(HostRoute.Direct), plugins = PluginListing(emptyList(), emptyList()),
-        computers = listOf(Computer("fixture", "Fixture computer", "fixture-key")), hello = buildJsonObject {
+    private fun fixture(): AppState = AppState(Computer("fixture", "Fixture computer", "fixture-key"), loading = false,
+        actualConnection = LinkState.Ready(HostRoute.Direct), plugins = PluginListing(emptyList(), emptyList()), hello = buildJsonObject {
             put("backends", buildJsonArray {
                 add(buildJsonObject { put("id", "claude"); put("name", "Claude"); put("available", true) })
                 add(buildJsonObject { put("id", "codex"); put("name", "Codex"); put("available", false); put("installHint", "Install Codex on your computer.") })

@@ -48,16 +48,17 @@ import kotlin.math.roundToInt
  * Usage limits, opened from the State tab (iOS `UsageSheet` + `UsageView`): one card per
  * provider, the tightest limit as a big bar, every limit listed below. Pull down to refresh.
  */
-@Composable fun UsageScreen(state: AppState, refresh: (force: Boolean) -> Unit, reload: suspend () -> Unit) {
+@Composable fun UsageScreen(state: AppState?, refresh: (force: Boolean) -> Unit, reload: suspend () -> Unit,
+    trailing: @Composable () -> Unit = {}) {
     val dismiss = LocalDismissModal.current
-    val report = remember(state.usage) { runCatching { UsageReport.decode(state.usage) }.getOrNull() ?: UsageReport() }
-    val online = state.actualConnection is LinkState.Ready
+    val report = remember(state?.usage) { state?.let { runCatching { UsageReport.decode(it.usage) }.getOrNull() } ?: UsageReport() }
+    val online = state?.actualConnection is LinkState.Ready
     // Opening Usage asks the computer for a current report (it answers from cache when it can).
     LaunchedEffect(online) { if (online) refresh(false) }
     Column(Modifier.fillMaxSize()) {
         ScreenHeader(leading = { IconButton("Close", "xmark", action = dismiss) },
-            title = { Text("Usage", style = Type.body.semibold, color = Palette.text) })
-        if (state.computers.isEmpty()) {
+            title = { Text("Usage", style = Type.body.semibold, color = Palette.text) }, trailing = { trailing() })
+        if (state == null) {
             EmptyUsage("No computer yet", "Usage shows up once a computer is connected.")
             return@Column
         }

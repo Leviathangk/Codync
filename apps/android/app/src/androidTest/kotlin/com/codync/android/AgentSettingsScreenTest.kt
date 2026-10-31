@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 class AgentSettingsScreenTest {
     @get:Rule val compose = createComposeRule()
-    private val online = AppState(loading = false, computers = listOf(Computer("fixture", "Fixture computer", "fixture")),
+    private val online = AppState(previewComputer, loading = false,
         actualConnection = LinkState.Ready(HostRoute.Direct))
     private val model = hasContentDescription("Model:", substring = true)
 

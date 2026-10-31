@@ -9,9 +9,21 @@ else a generic "Bug fixes and improvements" line. Delete old sections.
 
 ## 2.34.0
 ### zh-Hant
-- 自訂圖示現在只用在 bot 上，代理程式一律顯示自己的標誌。
-- 只用 Cursor CLI 登入時，也能看到 Cursor 的用量。
+- 可以配對多台電腦：Bots 每台電腦一個標題，頂端選單可篩選要顯示的電腦。
+- Bot 詳情新增「記憶」頁。
+- 訊息框加入聽寫：裝置上辨識，或用你自己的 OpenAI／Gemini 金鑰轉錄。
+- 新對話交接卡片可以保留原對話或編輯交接內容。
+- 通話以來電樣式通知，可直接掛斷或靜音；新增 Claude Code、Codex 用量小工具。
+- 設定加入「在 Google Play 評分」與「回報問題」；有新版本時會提醒。
+- 掃描配對 QR code 更容易對焦。
+- 自訂圖示現在只用在 bot 上；只用 Cursor CLI 登入時也能看到 Cursor 用量。
 
 ### en-US
-- Custom icons are now for bots only; agents always show their own logo.
-- Cursor usage now shows when you sign in with the Cursor CLI only.
+- Pair more than one computer, with a heading per computer and a filter in Bots.
+- Bot details gain a Memory page.
+- Dictate in the message box, on device or with your own OpenAI or Gemini key.
+- Keep or edit a fresh conversation's handoff.
+- Calls show as Android calls; new Claude Code and Codex usage widgets.
+- Rate on Google Play, Report an issue, and an update note.
+- The pairing camera focuses more easily.
+- Custom icons are for bots only; Cursor usage shows with a CLI sign-in.

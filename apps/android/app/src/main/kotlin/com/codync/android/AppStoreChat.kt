@@ -1,6 +1,5 @@
 package com.codync.android
 
-import android.app.Application
 import java.io.IOException
 import java.util.UUID
 import com.codync.android.core.*
@@ -10,9 +9,11 @@ import kotlinx.serialization.json.*
 
 // Conversations: opening a bot, history, sending and its retries.
 
+/** Opens a chat on this computer (the account closes any other computer's) or, with null, closes it. */
 fun AppStore.openBot(id: String?) {
+    if (id == null && state.value.selectedBot == null) return
     mutableState.update { it.copy(selectedBot = id, trace = false) }
-    if (id != null) acknowledgeVisible()
+    if (id != null) { opened(this); acknowledgeVisible() }
 }
 fun AppStore.showTrace(show: Boolean) { mutableState.update { it.copy(trace = show) } }
 
@@ -113,10 +114,10 @@ internal suspend fun AppStore.deliver(send: PendingSend) {
         withContext(Dispatchers.IO) { requireNotNull(database).receive(listOf(entry)) }
         refresh()
         val bot = state.value.bots.firstOrNull { it.id == send.botId }
-        if (bot != null && PushPreferences.tasks(getApplication()) && getApplication<Application>().getSystemService(android.app.NotificationManager::class.java).areNotificationsEnabled()) {
-            val watch = withContext(Dispatchers.IO) { TaskFeed(local.directory).start(bot) }
-            NotificationDisplay.task(getApplication(), local.referenceId, state.value.computers.first().id, watch)
-            syncPush(); PushDelivery.schedule(getApplication())
+        if (bot != null && PushPreferences.tasks(application) && application.getSystemService(android.app.NotificationManager::class.java).areNotificationsEnabled()) {
+            val watch = withContext(Dispatchers.IO) { feed.start(bot) }
+            NotificationDisplay.task(application, local.referenceId, id, watch)
+            syncPush(); PushDelivery.schedule(application)
         }
     } catch (error: CancellationException) {
         withContext(NonCancellable) { savePending(send.copy(status = SendStatus.Failed, error = "Sending was interrupted. Retry uses the same message ID.")) }
@@ -138,3 +139,13 @@ fun AppStore.respond(entry: Entry, option: String?) = action("permission:" + ent
     active.call("respondPermission", body("entryId" to entry.id, "optionId" to option))
     delay(2_000)
 }
+
+/** Carries on with the bot's current conversation instead of the handoff. */
+internal fun AppStore.keepConversation(entry: Entry) = command("keepConversation", body("entryId" to entry.id), "handoff:" + entry.id)
+
+/** Saves the user's version of a handoff that hasn't been sent; whether it did (its error shows). */
+internal suspend fun AppStore.editHandoff(entry: Entry, text: String): Boolean = try {
+    hostCall("editHandoff", body("entryId" to entry.id, "text" to text), 30_000)
+    true
+} catch (cancelled: CancellationException) { throw cancelled }
+catch (error: Exception) { showError(error); false }

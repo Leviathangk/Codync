@@ -47,7 +47,7 @@ private enum class PickerStage { Closed, Agents, Models, Settings }
     var loading by remember(backend) { mutableStateOf(false) }
     var failure by remember(backend) { mutableStateOf<String?>(null) }
     var retry by remember(backend) { mutableIntStateOf(0) }
-    LaunchedEffect(state.computers.firstOrNull()?.id, backend, online, retry) {
+    LaunchedEffect(state.computer.id, backend, online, retry) {
         failure = null; loading = false
         if (backend == "custom") return@LaunchedEffect
         if (!online) { failure = "Connect to this computer to load its models. You can still enter a model ID."; return@LaunchedEffect }

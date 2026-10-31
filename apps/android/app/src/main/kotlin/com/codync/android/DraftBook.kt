@@ -20,11 +20,7 @@ data class ComposerDraft(val botId: String, val text: String = "",
 
 /** One bounded draft book per account/computer; a draft's nonce also identifies its durable send. */
 class DraftBook(private val directory: File, computerId: String) {
-    private val file: AtomicFile
-    init {
-        require(computerId.matches(Regex("[A-Za-z0-9_-]{22}")))
-        file = AtomicFile(File(directory, "drafts-$computerId.json"))
-    }
+    private val file = bookFile(directory, computerId)
 
     @Synchronized fun read(): List<ComposerDraft> {
         if (!file.baseFile.exists()) return emptyList()
@@ -71,5 +67,13 @@ class DraftBook(private val directory: File, computerId: String) {
         }
     }
 
-    companion object { private const val MAX_BYTES = 8 * 1024 * 1024 }
+    companion object {
+        private const val MAX_BYTES = 8 * 1024 * 1024
+        private fun bookFile(directory: File, computerId: String): AtomicFile {
+            require(computerId.matches(Regex("[A-Za-z0-9_-]{22}")))
+            return AtomicFile(File(directory, "drafts-$computerId.json"))
+        }
+        /** Deletes a computer's drafts. */
+        fun delete(directory: File, computerId: String) { bookFile(directory, computerId).delete() }
+    }
 }
