@@ -184,5 +184,7 @@ async fn an_import_makes_bots_and_one_group_and_rolls_a_failed_bot_back() {
     assert_eq!(lead, research["id"].as_str().unwrap(), "the export's lead leads");
     let warnings = done["warnings"].to_string();
     assert!(warnings.contains("Couldn't import Ops") && warnings.contains("Again"), "{warnings}");
+    // The hub holds the database open, which Windows won't delete.
+    drop(hub);
     std::fs::remove_dir_all(dir).unwrap();
 }
