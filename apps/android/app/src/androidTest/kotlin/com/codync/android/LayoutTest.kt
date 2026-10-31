@@ -18,8 +18,8 @@ import org.junit.Test
 /** Read-only roster fixture: nothing here pairs, saves or sends. */
 class LayoutTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
-    private val computer = Computer("fixture", "Acceptance computer", "fixture")
-    private val app = AccountContext(loading = false, setupComplete = true, computers = listOf(computer))
+    private val computer = Computer("fixture-computer-00001", "Acceptance computer", "fixture")
+    private val app = AccountContext(loading = false, setupComplete = true, account = AccountState(ready = true), computers = listOf(computer))
     private val state = AppState(computer, loading = false, rosterLoaded = true,
         connection = LinkState.Ready(HostRoute.Direct), actualConnection = LinkState.Ready(HostRoute.Direct), bots = (1..5).map {
             Bot("bot-$it", "Bot $it", lastMessage = "A recent reply", unread = if (it == 1) 12 else 0)
@@ -70,7 +70,7 @@ class LayoutTest {
         snapshot("large-text")
         compose.onNode(computers).performClick()
         compose.onNodeWithText("Manage computers").assertIsDisplayed()
-        compose.onNodeWithText("Acceptance computer · Connected").assertIsDisplayed()
+        compose.onNodeWithText("Connected").assertIsDisplayed()
     }
 
     private fun snapshot(name: String) {

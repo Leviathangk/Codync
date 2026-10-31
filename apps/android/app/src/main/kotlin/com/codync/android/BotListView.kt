@@ -21,10 +21,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import android.content.Context
-import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.unit.Dp
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -52,19 +53,32 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.codync.android.core.Bot
+import com.codync.android.core.ComputerSelection
 import com.codync.android.core.LinkState
 import com.codync.android.design.*
 import com.kyant.shapes.Capsule
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonArray
 
 /** One computer's roster while the list shows it: its rows' and sections' drags and its section order (kept on this device). */
-private class ComputerRoster(context: Context, val key: String) {
+private class ComputerRoster(private val context: Context, val key: String) {
     val reorder = RosterReorder()
     val sections = SectionReorder()
     var order by mutableStateOf(SectionOrders.load(context, key))
+
+    /** Points the drags at [state]'s bots and sections as [list] shows them. */
+    fun sync(state: AppState, list: LazyListState) {
+        val bots = roster(state.bots)
+        reorder.roster = bots
+        sections.names = orderedSections(sectionNames(bots.filterNot { it.pinned }) +
+            if (bots.any { !it.pinned && it.section == null }) listOf("") else emptyList(), order)
+        sections.save = { order = it; sections.names = it; SectionOrders.save(context, key, it) }
+        sections.position = { name ->
+            val item = "${state.computer.id}:" + if (name.isEmpty()) "label:bots" else "section:$name"
+            list.layoutInfo.visibleItemsInfo.firstOrNull { it.key == item }?.offset?.toFloat() ?: 0f
+        }
+    }
 }
 
 /**
@@ -94,18 +108,8 @@ private class ComputerRoster(context: Context, val key: String) {
     // A lifted heading folds every computer's bots into their headings while it moves.
     val movingComputer = computerReorder.dragged != null
     val ordered = computerReorder.shown.mapNotNull { id -> shown.firstOrNull { it.computer.id == id } }
-    for (state in shown) {
-        val roster = rosters.getOrPut(state.computer.id) { ComputerRoster(context, SectionOrders.key(app.contextId, state.computer.id)) }
-        val bots = roster(state.bots)
-        roster.reorder.roster = bots
-        roster.sections.names = orderedSections(sectionNames(bots.filterNot { it.pinned }) +
-            if (bots.any { !it.pinned && it.section == null }) listOf("") else emptyList(), roster.order)
-        roster.sections.save = { roster.order = it; roster.sections.names = it; SectionOrders.save(context, roster.key, it) }
-        roster.sections.position = { name ->
-            val key = "${state.computer.id}:" + if (name.isEmpty()) "label:bots" else "section:$name"
-            listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == key }?.offset?.toFloat() ?: 0f
-        }
-    }
+    for (state in shown) rosters.getOrPut(state.computer.id) { ComputerRoster(context, SectionOrders.key(app.contextId, state.computer.id)) }
+        .sync(state, listState)
     // A folded section renamed or removed here stays folded under its new name, at once, like its bots; a refusal puts the
     // folds back, reading and writing the stored ones, as the list may have left the screen.
     val renameSection = { roster: ComputerRoster, store: AppStore, from: String, to: String? ->
@@ -157,18 +161,9 @@ private class ComputerRoster(context: Context, val key: String) {
                 val store = accounts.store(id) ?: continue
                 val roster = rosters[id] ?: continue
                 if (grouped) item("computer:$id") {
-                    Column(Modifier.onSizeChanged { computerReorder.heights[id] = it.height }
-                        .then(if (computerReorder.dragged == id) Modifier.zIndex(1f).graphicsLayer { translationY = computerReorder.translation(id) } else Modifier.animateItem())) {
-                        // Not synced while it needs an update: "No bots yet" wouldn't be true.
-                        ComputerSection(state, empty = state.mismatch == null && roster(state.bots).isEmpty(), folded = movingComputer || id in collapsed,
-                            stale = app.isStale(state, states), toggle = {
-                                collapsed = if (id in collapsed) collapsed - id else collapsed + id
-                                RosterComputers.setFolded(context, collapsed)
-                            }, move = { computerReorder.move(id, it) },
-                            extensions = { extensions(id) }.takeIf { state.connection is LinkState.Ready && state.mismatch == null },
-                            drag = computerReorder.handle(id))
-                        state.mismatch?.let { UpdateNeededCard(state, it, store::requestHostUpdate, Modifier.padding(vertical = 8.dp)) }
-                    }
+                    ComputerHeading(state, store, computerReorder, folded = movingComputer || id in collapsed, stale = app.isStale(state, states),
+                        toggle = { collapsed = if (id in collapsed) collapsed - id else collapsed + id; RosterComputers.setFolded(context, collapsed) },
+                        extensions = { extensions(id) })
                 }
                 if (grouped && (movingComputer || id in collapsed)) continue
                 botLines(state, store, roster, folded, grouped, RosterActions(toggleSection,
@@ -190,6 +185,19 @@ private class ComputerRoster(context: Context, val key: String) {
     SectionNameDialog(naming) { naming = null }
 }
 
+/** A computer's heading (and, while it needs one, its update notice) that drags to reorder the computers. */
+@Composable private fun LazyItemScope.ComputerHeading(state: AppState, store: AppStore, reorder: SectionReorder, folded: Boolean, stale: Boolean,
+    toggle: () -> Unit, extensions: () -> Unit) {
+    val id = state.computer.id
+    Column(reorderable(reorder, id)) {
+        // Not synced while it needs an update: "No bots yet" wouldn't be true.
+        ComputerSection(state, empty = state.mismatch == null && roster(state.bots).isEmpty(), folded = folded, stale = stale, toggle = toggle,
+            move = { reorder.move(id, it) }, extensions = extensions.takeIf { state.connection is LinkState.Ready && state.mismatch == null },
+            drag = reorder.handle(id))
+        state.mismatch?.let { UpdateNeededCard(state, it, store::requestHostUpdate, Modifier.padding(vertical = 8.dp)) }
+    }
+}
+
 /** What a computer's rows and section headings ask of the roster. */
 private class RosterActions(val toggleSection: (String) -> Unit, val rename: (String) -> Unit, val remove: (String) -> Unit,
     val newSection: (Bot) -> Unit, val edit: (Bot) -> Unit, val delete: (Bot) -> Unit)
@@ -205,12 +213,10 @@ private fun LazyListScope.botLines(state: AppState, store: AppStore, roster: Com
             // Folding drops the section's rows from the list; animateItem fades them out and slides the rest up.
             is RosterLine.Header -> SectionHeader(line, toggle = { actions.toggleSection(line.name) },
                 actions = if (state.supportsSections) sectionActions(rename = { actions.rename(line.name) }, remove = { actions.remove(line.name) }) else emptyList(),
-                modifier = Modifier.onSizeChanged { sectionReorder.heights[line.name] = it.height }
-                    .then(if (sectionReorder.dragged == line.name) Modifier.zIndex(1f).graphicsLayer { translationY = sectionReorder.translation(line.name) } else Modifier.animateItem()),
+                modifier = reorderable(sectionReorder, line.name),
                 drag = sectionReorder.handle(line.name),
                 move = { sectionReorder.move(line.name, it) })
-            RosterLine.Label -> SectionLabel(Modifier.onSizeChanged { sectionReorder.heights[""] = it.height }
-                .then(if (sectionReorder.dragged == "") Modifier.zIndex(1f).graphicsLayer { translationY = sectionReorder.translation("") } else Modifier.animateItem()), sectionReorder.handle("")) { sectionReorder.move("", it) }
+            RosterLine.Label -> SectionLabel(reorderable(sectionReorder, ""), sectionReorder.handle("")) { sectionReorder.move("", it) }
             is RosterLine.Row -> {
                 val bot = line.bot
                 val lifted = reorder.dragged == bot.id
@@ -420,7 +426,3 @@ internal fun backendName(state: AppState, id: String): String =
         ?.firstOrNull { (it as? kotlinx.serialization.json.JsonObject)?.get("id") == JsonPrimitive(id) }
         ?.let { ((it as kotlinx.serialization.json.JsonObject)["name"] as? JsonPrimitive)?.content }
         ?: when (id) { "claude" -> "Claude Code"; "codex" -> "Codex"; "opencode" -> "OpenCode"; "grok" -> "Grok Build"; "gemini" -> "Gemini CLI"; else -> "Custom agent" }
-
-/** Saves a dragged roster order (the host syncs it to every device). */
-internal fun AppStore.reorder(ids: List<String>) =
-    command("reorderBots", buildJsonObject { putJsonArray("ids") { ids.forEach { add(JsonPrimitive(it)) } } }, "reorder")

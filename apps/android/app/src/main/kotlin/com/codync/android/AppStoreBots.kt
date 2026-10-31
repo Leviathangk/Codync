@@ -182,3 +182,15 @@ suspend fun AppStore.routineWebhook(botId: String, id: String, rotate: Boolean =
     val response = hostQuery("routineWebhook", buildJsonObject { put("botId", botId); put("id", id); put("rotate", rotate) })
     return WireJson.decodeFromJsonElement(response)
 }
+
+/** Saves a dragged roster order (the host syncs it to every device). */
+internal fun AppStore.reorder(ids: List<String>) =
+    command("reorderBots", buildJsonObject { putJsonArray("ids") { ids.forEach { add(JsonPrimitive(it)) } } }, "reorder")
+
+/** Whether the bot's harness keeps its own memory on beside Codync's (iOS `setHarnessMemory`). */
+internal fun AppStore.setHarnessMemory(bot: Bot, on: Boolean) =
+    command("updateBot", buildJsonObject { put("id", bot.id); put("harnessMemory", on) }, "memory:" + bot.id)
+
+/** Whether the bot uses what all the user's bots share (iOS `setSharedMemory`). */
+internal fun AppStore.setSharedMemory(bot: Bot, shared: Boolean) =
+    command("updateBot", buildJsonObject { put("id", bot.id); put("sharedMemory", shared) }, "memory:" + bot.id)

@@ -31,7 +31,7 @@ class AccountScreenTest {
     private val second = SavedAccount("second", "second-session", "sam@example.test", null)
     private val account = AccountState(ready = true, configured = true, userId = first.userId,
         accounts = listOf(first, second), multiple = true)
-    private val computer = Computer("paired", "Fixture computer", "fixture-key")
+    private val computer = Computer("paired-computer-000001", "Fixture computer", "fixture-key")
     private fun fixture(accountState: AccountState = account) = AccountContext(loading = false,
         setupComplete = true, account = accountState, contextId = "profile-fixture")
     private fun paired(link: LinkState, bots: List<Bot> = emptyList()) =

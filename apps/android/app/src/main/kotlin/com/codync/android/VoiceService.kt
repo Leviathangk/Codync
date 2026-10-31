@@ -9,7 +9,9 @@ import android.media.*
 import android.net.Uri
 import android.os.*
 import androidx.core.app.NotificationCompat
+import androidx.core.app.Person
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.IconCompat
 import com.codync.android.core.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collectLatest
@@ -131,13 +133,9 @@ class VoiceService : Service() {
             .setAction(kind).putExtra(ID, callId), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         // An ongoing call, as Android draws one (iOS: the call's Live Activity): the bot's face and name, the call's length
         // counting up, hang up and mute here, and the status bar's call chip while it lasts.
-        val face = bot?.let {
-            com.codync.android.design.customAvatarBitmap(it.customIcon?.dataUrl, it.customIcon?.tinted == true, 128,
-                com.codync.android.design.AvatarPalette.colors[it.avatarColor]?.toInt() ?: 0xFF1084FE.toInt())
-                ?: com.codync.android.design.characterAvatarBitmap(it.avatarShape, it.avatarColor, 128, 0xFF141414.toInt())
-        }
-        val caller = androidx.core.app.Person.Builder().setName(bot?.name ?: "Codync").setImportant(true)
-            .apply { face?.let { setIcon(androidx.core.graphics.drawable.IconCompat.createWithBitmap(it)) } }.build()
+        val face = bot?.let { notificationFace(it.avatarShape, it.avatarColor, it.customIcon) }
+        val caller = Person.Builder().setName(bot?.name ?: "Codync").setImportant(true)
+            .apply { face?.let { setIcon(IconCompat.createWithBitmap(it)) } }.build()
         return NotificationCompat.Builder(this, CHANNEL).setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(bot?.name ?: "Codync")
             .setContentText(callNotificationText(state, progress))

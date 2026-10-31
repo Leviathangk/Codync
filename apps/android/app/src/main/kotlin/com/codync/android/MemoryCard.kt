@@ -3,7 +3,6 @@ package com.codync.android
 import android.content.res.Configuration
 import android.text.format.DateUtils
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -34,8 +33,6 @@ import com.codync.android.core.MemoryFileDetail
 import com.codync.android.core.MemoryFiles
 import com.codync.android.design.*
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 
 private enum class MemorySection { Yours, Bot, Dreams, Harness }
 
@@ -237,11 +234,3 @@ private fun CardRows.harnessRows(project: BotMemory.Project?) {
 /** "5 minutes ago", "Yesterday": the system's relative date, as iOS's `.relative(presentation: .named)`. */
 private fun relative(milliseconds: Long): String =
     DateUtils.getRelativeTimeSpanString(milliseconds, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS).toString()
-
-/** Whether the bot's harness keeps its own memory on beside Codync's (iOS `setHarnessMemory`). */
-internal fun AppStore.setHarnessMemory(bot: Bot, on: Boolean) =
-    command("updateBot", buildJsonObject { put("id", bot.id); put("harnessMemory", on) }, "memory:" + bot.id)
-
-/** Whether the bot uses what all the user's bots share (iOS `setSharedMemory`). */
-internal fun AppStore.setSharedMemory(bot: Bot, shared: Boolean) =
-    command("updateBot", buildJsonObject { put("id", bot.id); put("sharedMemory", shared) }, "memory:" + bot.id)

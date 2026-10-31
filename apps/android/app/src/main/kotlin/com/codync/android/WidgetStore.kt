@@ -51,11 +51,8 @@ internal object WidgetStore {
         val file = feedFile(context, expected)
         val stored = read<WidgetFeed>(file) ?: WidgetFeed(scope = expected.scope)
         val previous = stored.takeIf { it.computerId == usageComputer?.id } ?: WidgetFeed(scope = expected.scope, bots = stored.bots, botsAt = stored.botsAt)
-        val kept = stored.bots.filter { bot -> computers.any { it.bots == null && it.computer.id == bot.computerId } }
-        val bots = (widgetBots(computers.mapNotNull { c -> c.bots?.let { c.computer.id to it } }.toMap()) + kept)
-            .sortedBy { widgetRank(it.status) }.take(256)
-        val next = WidgetFeed(expected.scope, usageComputer?.id, usageComputer?.name.orEmpty().take(256), bots,
-            if (computers.isNotEmpty() && computers.all { it.fresh }) now else previous.botsAt, usage, if (freshUsage) now else
+        val shown = stored.readingBots(computers.map { it.computer.id to it.bots }, computers.all { it.fresh }, now)
+        val next = WidgetFeed(expected.scope, usageComputer?.id, usageComputer?.name.orEmpty().take(256), shown.bots, shown.botsAt, usage, if (freshUsage) now else
                 if (usage != previous.usage) usage.providers.mapNotNull { it.updatedAt?.takeIf { time -> time > 0 } }.minOrNull() ?: 0
                 else previous.usageAt)
         if (previous == next) return true

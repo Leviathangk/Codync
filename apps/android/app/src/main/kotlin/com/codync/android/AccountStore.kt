@@ -9,6 +9,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import kotlinx.serialization.json.JsonObject
 
 /**
  * The ViewModel the UI talks to (iOS `AccountStore`): the active account, its computers with one
@@ -78,7 +79,10 @@ class AccountStore(application: Application) : AndroidViewModel(application) {
             mutableState.update { AccountContext(contextId = local.referenceId, generation = it.generation + 1, account = it.account,
                 computers = computers, lastComputerId = last, tasks = PushPreferences.tasks(getApplication()),
                 setupComplete = complete || computers.isNotEmpty() || userId != null) }
-            for (computer in computers) open(computer)
+            // A computer that can't open (damaged drafts) is reported; the others, the cloud and the widgets go on.
+            for (computer in computers) try { open(computer) }
+                catch (error: CancellationException) { throw error }
+                catch (error: Exception) { mutableState.update { it.copy(error = error.message ?: "Couldn't open ${computer.name}.") } }
             // Outgoing files no queued message or draft of any computer needs anymore.
             withContext(Dispatchers.IO) { AttachmentFiles(getApplication(), local.directory).retainPending(stores.value.flatMap { it.pendingFiles() }) }
             if (userId != null) configureCloud(userId)
@@ -119,11 +123,10 @@ class AccountStore(application: Application) : AndroidViewModel(application) {
     /** Opens [computer]'s store and, in the foreground, its link (iOS `AccountStore.open`). */
     internal suspend fun open(computer: Computer) {
         val context = state.value
-        val store = AppStore(getApplication(), local, computer, context.contextId, context.generation, contextJob, ::saveComputer) { opened ->
+        val store = AppStore(getApplication(), local, computer, context.contextId, context.generation, contextJob, ::saveComputer, opened = { opened ->
             for (other in stores.value) if (other !== opened) other.openBot(null)
             noteActive(opened.id)
-        }
-        store.usageRead = ::publishUsage
+        }, usageRead = ::publishUsage)
         store.open()
         mutableStores.update { list -> list.filter { it.id != computer.id } + store }
         sortStores()
@@ -139,7 +142,8 @@ class AccountStore(application: Application) : AndroidViewModel(application) {
             val computers = state.value.computers.filter { it.id != id }
             withContext(Dispatchers.IO) {
                 local.saveComputers(computers)
-                local.directory.listFiles()?.filter { it.name.startsWith("mirror-$id") || it.name == "drafts-$id.json" }?.forEach { it.delete() }
+                MirrorDatabase.delete(local.directory, id)
+                DraftBook.delete(local.directory, id)
             }
             mutableState.update { it.copy(computers = computers) }
         }
@@ -232,7 +236,8 @@ class AccountStore(application: Application) : AndroidViewModel(application) {
         for (store in stores.value) store.clearError()
     }
 
-    private data class WidgetSource(val computers: List<Computer>, val states: List<AppState>, val current: String?)
+    /** Only what the widgets show, so a streaming answer doesn't publish (or hold off) anything. */
+    private data class WidgetSource(val paired: Boolean, val computers: List<WidgetComputer>, val usageComputer: Computer?, val usage: JsonObject?)
 
     /** The Bots widgets show every computer's bots; Usage the last active computer's (iOS `BotsEntry`, `UsageTimeline`). */
     @OptIn(FlowPreview::class)
@@ -240,16 +245,19 @@ class AccountStore(application: Application) : AndroidViewModel(application) {
         contextScope.launch {
             combine(state, computerStates) { context, states -> context to states }
                 .filter { (context, _) -> !context.loading && context.contextId == owner.scope }
-                .map { (context, states) -> WidgetSource(context.computers, context.computers.mapNotNull { states[it.id] }, context.currentComputerId) }
+                .map { (context, states) ->
+                    val usage = states[context.currentComputerId]
+                    WidgetSource(context.computers.isNotEmpty(), context.computers.mapNotNull { states[it.id] }
+                        .map { WidgetComputer(it.computer, it.bots, it.widgetBotsCurrent) }, usage?.computer, usage?.usage)
+                }
                 .distinctUntilChanged().debounce(350).collect { source ->
                     try {
-                        val usage = source.states.firstOrNull { it.computer.id == source.current }
                         val accepted = withContext(Dispatchers.IO) {
-                            WidgetStore.publish(getApplication(), owner, source.states.map { WidgetComputer(it.computer, it.bots, it.widgetBotsCurrent) },
-                                usage?.computer, UsageReport.decode(usage?.usage ?: kotlinx.serialization.json.JsonObject(emptyMap())), false)
+                            WidgetStore.publish(getApplication(), owner, source.computers, source.usageComputer,
+                                UsageReport.decode(source.usage ?: JsonObject(emptyMap())), false)
                         }
                         if (!accepted) return@collect
-                        WidgetRefreshWorker.schedule(getApplication(), source.computers.isNotEmpty())
+                        WidgetRefreshWorker.schedule(getApplication(), source.paired)
                         CodyncWidgets.update(getApplication())
                     } catch (cancelled: CancellationException) { throw cancelled }
                     catch (_: Exception) { mutableState.update { it.copy(error = "Couldn't update widgets. Open State and try again.") } }

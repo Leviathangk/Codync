@@ -89,90 +89,101 @@ private data class Editing<T>(val computerId: String, val draft: T)
         if (bot.kind == "group") groupEditor = Editing(computerId, GroupDraft.from(bot)) else editor = Editing(computerId, BotDraft.from(bot))
     }
     val openMarketplace = { id: String -> showAccount = false; showComputers = false; marketplace = id }
-    Box(Modifier.fillMaxSize().background(Palette.background)) { CompositionLocalProvider(LocalAccounts provides accounts) {
-        AnimatedContent(root, transitionSpec = {
-            if (initialState == Root.Welcome && targetState == Root.Pairing)
-                (slideInHorizontally(Motion.layoutOffset) { it } + fadeIn(Motion.fade())) togetherWith (slideOutHorizontally(Motion.layoutOffset) { -it } + fadeOut(Motion.fade()))
-            else if (initialState == Root.Pairing && targetState == Root.Welcome)
-                (slideInHorizontally(Motion.layoutOffset) { -it } + fadeIn(Motion.fade())) togetherWith (slideOutHorizontally(Motion.layoutOffset) { it } + fadeOut(Motion.fade()))
-            else fadeIn(Motion.fade()) togetherWith fadeOut(Motion.fade())
-        }, label = "Root") { shown ->
-            when (shown) {
-                Root.Loading -> Box(Modifier.fillMaxSize())
-                Root.Welcome -> WelcomeView(app, accounts) { welcomed = true }
-                Root.Pairing -> Box(Modifier.fillMaxSize().safeDrawingPadding()) {
-                    PairingView(app, accounts, onSkip = accounts::skipSetup) {
-                        if (signedIn) AccountSwitcherButton(app) { showAccount = true } else BackButton { welcomed = false }
+    // The sheets too: a bot's editor sets custom icons, which need sign-in.
+    CompositionLocalProvider(LocalAccounts provides accounts) {
+        Box(Modifier.fillMaxSize().background(Palette.background)) {
+            AnimatedContent(root, transitionSpec = {
+                if (initialState == Root.Welcome && targetState == Root.Pairing)
+                    (slideInHorizontally(Motion.layoutOffset) { it } + fadeIn(Motion.fade())) togetherWith (slideOutHorizontally(Motion.layoutOffset) { -it } + fadeOut(Motion.fade()))
+                else if (initialState == Root.Pairing && targetState == Root.Welcome)
+                    (slideInHorizontally(Motion.layoutOffset) { -it } + fadeIn(Motion.fade())) togetherWith (slideOutHorizontally(Motion.layoutOffset) { it } + fadeOut(Motion.fade()))
+                else fadeIn(Motion.fade()) togetherWith fadeOut(Motion.fade())
+            }, label = "Root") { shown ->
+                when (shown) {
+                    Root.Loading -> Box(Modifier.fillMaxSize())
+                    Root.Welcome -> WelcomeView(app, accounts) { welcomed = true }
+                    Root.Pairing -> Box(Modifier.fillMaxSize().safeDrawingPadding()) {
+                        PairingView(app, accounts, onSkip = accounts::skipSetup) {
+                            if (signedIn) AccountSwitcherButton(app) { showAccount = true } else BackButton { welcomed = false }
+                        }
+                    }
+                    Root.Tabs -> MainTabs(app, states, accounts, account = { showAccount = true }, manage = { showComputers = true }, usage = { showUsage = true },
+                        newBot = { creating = NewTarget(group = false, computerId = it) }, newGroup = { creating = NewTarget(group = true, computerId = it) },
+                        edit = edit, extensions = openMarketplace, covered = showAccount || showComputers || showPairing || showUsage ||
+                            marketplace != null || creating != null || access != null || editor != null || groupEditor != null || app.error != null) { chat ->
+                        // A conversation, talking to the computer the bot lives on.
+                        accounts.store(chat.computer.id)?.let { store -> ChatScreen(chat, store) { bot -> edit(chat.computer.id, bot) } }
                     }
                 }
-                Root.Tabs -> MainTabs(app, states, accounts, account = { showAccount = true }, manage = { showComputers = true }, usage = { showUsage = true },
-                    newBot = { creating = NewTarget(group = false, computerId = it) }, newGroup = { creating = NewTarget(group = true, computerId = it) },
-                    edit = edit, extensions = openMarketplace, covered = showAccount || showComputers || showPairing || showUsage ||
-                        marketplace != null || creating != null || access != null || editor != null || groupEditor != null || app.error != null) { chat ->
-                    // A conversation, talking to the computer the bot lives on.
-                    accounts.store(chat.computer.id)?.let { store -> ChatScreen(chat, store) { bot -> edit(chat.computer.id, bot) } }
+            }
+        }
+        CodyncSheet(showAccount && (app.setupComplete || signedIn) && !app.loading, { showAccount = false }) {
+            AnalyticsOnAppear(AnalyticsEvent.ScreenViewed(AnalyticsScreen.Account))
+            AccountSwitcherView(app, accounts) { showPairing = true }
+        }
+        CodyncSheet(showComputers && !app.loading, { showComputers = false }) {
+            AnalyticsOnAppear(AnalyticsEvent.ScreenViewed(AnalyticsScreen.Computers))
+            ComputersView(app, states, accounts, { showPairing = true }, { access = it }, openMarketplace)
+        }
+        CodyncSheet(access, { access = null }) { AccessRequestView(app, accounts, it) }
+        CodyncSheet(showPairing && !app.loading, { showPairing = false }) {
+            AnalyticsOnAppear(AnalyticsEvent.ScreenViewed(AnalyticsScreen.Pairing))
+            PairingView(app, accounts, inModal = true)
+        }
+        CodyncSheet(showUsage && !app.loading, { showUsage = false }) {
+            AnalyticsOnAppear(AnalyticsEvent.ScreenViewed(AnalyticsScreen.Usage))
+            UsageSheet(app, states, accounts)
+        }
+        // Each computer has its own Extensions; it's opened from that computer's heading or row.
+        CodyncSheet(marketplace?.takeIf { root == Root.Tabs && it in computers }, { marketplace = null }) { id ->
+            AnalyticsOnAppear(AnalyticsEvent.ScreenViewed(AnalyticsScreen.Marketplace))
+            OnComputer(id, computers, accounts) { state, store -> key(id) { MarketplaceView(state, store) } }
+        }
+        CodyncSheet(creating?.takeIf { !app.loading }, { creating = null }) { target ->
+            OnComputer(target.computerId, computers, accounts) { state, store ->
+                // Not keyed on the computer: a new bot keeps its name and face when it moves to another.
+                key(app.contextId, app.generation) {
+                    if (target.group) NewGroupView(state, store)
+                    // A new bot can move to another computer until it's created (iOS `NewBotView`'s Computer row).
+                    else NewBotView(state, store, availableComputers(app, states).map { it.computer.id to computerChoice(it) }) {
+                        creating = NewTarget(group = false, computerId = it)
+                    }
                 }
             }
         }
-    } }
-    CodyncSheet(showAccount && (app.setupComplete || signedIn) && !app.loading, { showAccount = false }) {
-        AnalyticsOnAppear(AnalyticsEvent.ScreenViewed(AnalyticsScreen.Account))
-        AccountSwitcherView(app, accounts) { showPairing = true }
-    }
-    CodyncSheet(showComputers && !app.loading, { showComputers = false }) {
-        AnalyticsOnAppear(AnalyticsEvent.ScreenViewed(AnalyticsScreen.Computers))
-        ComputersView(app, states, accounts, { showPairing = true }, { access = it }, openMarketplace)
-    }
-    CodyncSheet(access, { access = null }) { AccessRequestView(app, accounts, it) }
-    CodyncSheet(showPairing && !app.loading, { showPairing = false }) {
-        AnalyticsOnAppear(AnalyticsEvent.ScreenViewed(AnalyticsScreen.Pairing))
-        PairingView(app, accounts, inModal = true)
-    }
-    CodyncSheet(showUsage && !app.loading, { showUsage = false }) {
-        AnalyticsOnAppear(AnalyticsEvent.ScreenViewed(AnalyticsScreen.Usage))
-        UsageSheet(app, states, accounts)
-    }
-    // Each computer has its own Extensions; it's opened from that computer's heading or row.
-    CodyncSheet(marketplace?.takeIf { root == Root.Tabs }?.let(computers::get), { marketplace = null }) { state ->
-        AnalyticsOnAppear(AnalyticsEvent.ScreenViewed(AnalyticsScreen.Marketplace))
-        accounts.store(state.computer.id)?.let { store -> key(state.computer.id) { MarketplaceView(state, store) } }
-    }
-    CodyncSheet(creating?.takeIf { !app.loading }, { creating = null }) { target ->
-        val state = computers[target.computerId]
-        val store = accounts.store(target.computerId)
-        if (state != null && store != null) key(app.contextId, app.generation, target.computerId) {
-            if (target.group) NewGroupView(state, store)
-            // A new bot can move to another computer until it's created (iOS `NewBotView`'s Computer row).
-            else NewBotView(state, store, availableComputers(app, states).map { it.computer.id to computerChoice(it) }) {
-                creating = NewTarget(group = false, computerId = it)
+        // A group's editor is its details (a chat's title and the roster open it); a bot's (the roster's Edit profile) is all its settings.
+        CodyncSheet(groupEditor.takeIf { !app.loading }, { groupEditor = null }) { target ->
+            AnalyticsOnAppear(AnalyticsEvent.ScreenViewed(AnalyticsScreen.BotDetails))
+            OnComputer(target.computerId, computers, accounts) { state, store ->
+                key(app.contextId, app.generation, target.computerId, target.draft.id) { GroupEditor(state, target.draft, store) }
             }
         }
+        CodyncSheet(editor.takeIf { !app.loading }, { editor = null }) { target ->
+            AnalyticsOnAppear(AnalyticsEvent.ScreenViewed(AnalyticsScreen.BotDetails))
+            OnComputer(target.computerId, computers, accounts) { state, store ->
+                key(app.contextId, app.generation, target.computerId, target.draft.id) { BotEditor(state, target.draft, store) }
+            }
+        }
+        // The remote screen opens over the app once its sheets have slid away: any computer's request (chat header, Computers, `codync://screen`).
+        val screen = states.firstOrNull { it.screenRequest != null }
+        LaunchedEffect(screen?.computer?.id, screen?.screenRequest) { if (screen != null) { closeAll(); showUsage = false } }
+        ScreenLayer(screen, screen?.let { accounts.store(it.computer.id) })
+        // One place for every computer's errors the screen showing them doesn't handle itself (pairing, access, the new and edit sheets do).
+        val inline = root == Root.Pairing || showPairing || access != null || creating != null || editor != null || groupEditor != null
+        val error = app.error ?: states.firstNotNullOfOrNull { it.error }
+        CodyncDialog("Something went wrong", error != null && !inline, accounts::clearError, error, cancel = "OK") { emptyList() }
     }
-    // A group's editor is its details (a chat's title and the roster open it); a bot's (the roster's Edit profile) is all its settings.
-    CodyncSheet(groupEditor.takeIf { !app.loading }, { groupEditor = null }) { target ->
-        AnalyticsOnAppear(AnalyticsEvent.ScreenViewed(AnalyticsScreen.BotDetails))
-        val state = computers[target.computerId]
-        val store = accounts.store(target.computerId)
-        if (state != null && store != null) key(app.contextId, app.generation, target.computerId, target.draft.id) { GroupEditor(state, target.draft, store) }
-    }
-    CodyncSheet(editor.takeIf { !app.loading }, { editor = null }) { target ->
-        AnalyticsOnAppear(AnalyticsEvent.ScreenViewed(AnalyticsScreen.BotDetails))
-        val state = computers[target.computerId]
-        val store = accounts.store(target.computerId)
-        if (state != null && store != null) key(app.contextId, app.generation, target.computerId, target.draft.id) { BotEditor(state, target.draft, store) }
-    }
-    // The remote screen opens over the app once its sheets have slid away: any computer's request (chat header, Computers, `codync://screen`).
-    val screen = states.firstOrNull { it.screenRequest != null }
-    LaunchedEffect(screen?.computer?.id, screen?.screenRequest) { if (screen != null) { closeAll(); showUsage = false } }
-    ScreenLayer(screen, screen?.let { accounts.store(it.computer.id) })
-    // One place for every computer's errors the screen showing them doesn't handle itself (pairing, access, the new and edit sheets do).
-    val inline = root == Root.Pairing || showPairing || access != null || creating != null || editor != null || groupEditor != null
-    val error = app.error ?: states.firstNotNullOfOrNull { it.error }
-    CodyncDialog("Something went wrong", error != null && !inline, accounts::clearError, error, cancel = "OK") { emptyList() }
 }
 
 /** The account's store, for the few computer screens that also act on the account (custom icons need sign-in). */
 internal val LocalAccounts = staticCompositionLocalOf<AccountStore?> { null }
+
+/** [content] with computer [id]'s state and store, while both are there (a sheet of one computer). */
+@Composable private fun OnComputer(id: String, computers: Map<String, AppState>, accounts: AccountStore, content: @Composable (AppState, AppStore) -> Unit) {
+    val state = computers[id] ?: return
+    val store = accounts.store(id) ?: return
+    content(state, store)
+}
 
 /** Computers that can take a new bot once they're connected: not ones waiting for an update, or that won't come back (iOS `availableStores`). */
 internal fun availableComputers(app: AccountContext, states: List<AppState>): List<AppState> =

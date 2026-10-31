@@ -17,6 +17,18 @@ class WidgetFeedTest {
         assertEquals(listOf("linux/a", "mac/b", "mac/a"), bots.map { it.key })
         // The same bot ID on two computers stays two spots.
         assertEquals(listOf("mac/a", "linux/a", "mac/b", null), teamSlots(bots, listOf("mac/a", null, null, null)).map { it?.key })
+        // A pick saved before several computers (a bare bot ID) still holds its spot.
+        assertEquals(listOf("mac/b", "linux/a", "mac/a", null), teamSlots(bots, listOf("b", null, null, null)).map { it?.key })
+    }
+
+    @Test fun `an unreachable computer keeps the bots it showed and a forgotten one takes its bots along`() {
+        val shown = WidgetFeed(bots = listOf(WidgetBot("a", "Old", "idle", computerId = "mac"), WidgetBot("b", "Gone", "idle", computerId = "old"),
+            WidgetBot("c", "Stale", "idle", computerId = "linux")), botsAt = 5)
+        val next = shown.readingBots(listOf("mac" to null, "linux" to listOf(Bot("d", "New", status = "working"))), fresh = false, now = 9)
+        assertEquals(listOf("linux/d", "mac/a"), next.bots.map { it.key })
+        assertEquals(5L, next.botsAt)
+        assertEquals(9L, shown.readingBots(listOf("linux" to emptyList()), fresh = true, now = 9).botsAt)
+        assertTrue(shown.readingBots(emptyList(), fresh = true, now = 9).let { it.bots.isEmpty() && it.botsAt == 5L })
     }
 
     @Test fun `team spots keep picks, skip deleted ones and fill the rest in feed order`() {

@@ -283,9 +283,7 @@ internal object NotificationDisplay {
             .setProgressSegments(List(4) { Notification.ProgressStyle.Segment(25).setColor(tint) })
             .setProgress(filled * 25)
         val custom = notificationIcons(context, scope, computer)["bot:${watch.botId}"]
-        val face = com.codync.android.design.customAvatarBitmap(custom?.dataUrl, custom?.tinted == true, 128,
-            com.codync.android.design.AvatarPalette.colors[watch.avatarColor]?.toInt() ?: 0xFF1084FE.toInt())
-            ?: com.codync.android.design.characterAvatarBitmap(watch.avatarShape, watch.avatarColor, 128, 0xFF141414.toInt())
+        val face = notificationFace(watch.avatarShape, watch.avatarColor, custom)
         val open = builder(context, scope, computer, watch.botId, TASKS).build().contentIntent
         val notification = Notification.Builder(context, TASKS).setSmallIcon(R.drawable.ic_notification).setContentTitle(watch.name).setContentText(text)
             .setLargeIcon(android.graphics.drawable.Icon.createWithBitmap(face)).setContentIntent(open).setStyle(style)

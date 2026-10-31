@@ -11,6 +11,19 @@ class ReviewTest {
     private fun user(nonce: String, turn: Long) = Entry("u$turn", turn, "b", turn, "user", turn,
         buildJsonObject { put("text", "do it"); put("clientNonce", nonce); put("status", "sent") })
     private fun answer(turn: Long) = Entry("a$turn", turn, "b", turn, "agent", turn, buildJsonObject { put("text", "done"); put("final", true) })
+    /** A message from this phone that isn't the person asking: a call's, a routine's or another bot's. */
+    private fun relayed(nonce: String, field: String) = Entry("r1", 1, "b", 1, "user", 1,
+        buildJsonObject { put("text", "do it"); put("clientNonce", nonce); put("status", "sent"); put(field, "x") })
+
+    /** An invitation with an opportunity waiting, made on day 10 as the person came back from "chat". */
+    private fun waiting(events: MutableList<ReviewInvitation.Event>): Pair<ReviewInvitation, Long> {
+        val invitation = ReviewInvitation(ReviewHistory(firstUse = 0, completed = 4, activeDays = setOf("a", "b", "c")), {}) { events += it }
+        invitation.setActive(true, 10 * day)
+        invitation.sent("n1", 10 * day)
+        invitation.viewed("chat", listOf(user("n1", 1), answer(1)), 10 * day + 1_000)
+        invitation.returned("chat", "2.34.0", 10 * day + 120_000)
+        return invitation to requireNotNull(invitation.opportunity)
+    }
 
     @Test fun `only a final answer to this phone's own message finishes it`() {
         val sent = mapOf("n1" to 0L)
@@ -55,6 +68,59 @@ class ReviewTest {
         assertFalse(invitation.request(token, "2.34.0", now + 123_000))
         assertEquals(listOf(ReviewInvitation.Event.Opportunity(6), ReviewInvitation.Event.Requested(6)), events)
         assertEquals(setOf("2.34.0"), history.requestedVersions)
+    }
+
+    @Test fun `twice in a rolling year at most`() {
+        val history = ReviewHistory(firstUse = 0, completed = 15, activeDays = setOf("a", "b", "c"),
+            requests = listOf(ReviewHistory.Request(0, "2.30.0", 5), ReviewHistory.Request(130 * day, "2.31.0", 10)),
+            requestedVersions = setOf("2.30.0", "2.31.0"))
+        assertFalse(history.eligible(260 * day, "2.32.0"))
+        assertTrue(history.eligible(366 * day, "2.32.0"))
+    }
+
+    @Test fun `leaving the app, a touch or something in use turns the opportunity down`() {
+        val events = mutableListOf<ReviewInvitation.Event>()
+        val (left, _) = waiting(events)
+        left.setActive(false, 10 * day + 121_000)
+        assertNull(left.opportunity)
+        val (touched, _) = waiting(events)
+        touched.cancel(ReviewCancellation.Interaction)
+        val (busy, token) = waiting(events)
+        busy.interrupt(Any(), true)
+        assertFalse(busy.request(token, "2.34.0", 10 * day + 122_000))
+        assertEquals(listOf(ReviewCancellation.Background, ReviewCancellation.Interaction, ReviewCancellation.Unavailable),
+            events.filterIsInstance<ReviewInvitation.Event.Cancelled>().map { it.reason })
+        // An answer read while something is in use doesn't count.
+        busy.sent("n2", 10 * day + 130_000)
+        busy.viewed("chat", listOf(user("n2", 2), answer(2)), 10 * day + 131_000)
+        assertEquals(5, busy.history.completed)
+    }
+
+    @Test fun `a call's, a routine's or another bot's turn never counts`() {
+        val sent = mapOf("n1" to 0L)
+        for (field in listOf("call", "routineId", "from")) assertNull(field, ReviewCompletion.match(listOf(relayed("n1", field), answer(1)), sent, day))
+    }
+
+    @Test fun `sent messages are forgotten after a month and kept to a hundred`() {
+        var history = ReviewHistory(firstUse = 0, sent = mapOf("old" to 0L, "recent" to 20 * day))
+        val invitation = ReviewInvitation(history, { history = it }) { }
+        invitation.setActive(true, 31 * day)
+        assertEquals(setOf("recent"), history.sent.keys)
+        for (i in 0 until 100) invitation.sent("n$i", 31 * day + i)
+        assertEquals(100, history.sent.size)
+        assertFalse("recent" in history.sent)
+    }
+
+    @Test fun `a turn with several messages counts once`() {
+        var history = ReviewHistory(firstUse = 0)
+        val invitation = ReviewInvitation(history, { history = it }) { }
+        invitation.setActive(true, day)
+        invitation.sent("n1", day)
+        invitation.sent("n2", day + 1)
+        val second = Entry("u1b", 2, "b", 2, "user", 1, buildJsonObject { put("text", "also"); put("clientNonce", "n2"); put("status", "sent") })
+        invitation.viewed("chat", listOf(user("n1", 1), second, answer(1)), day + 1_000)
+        assertEquals(1, history.completed)
+        assertTrue(history.sent.isEmpty())
     }
 
     @Test fun `play version codes read back as versions and a newer one is reminded until dismissed`() {

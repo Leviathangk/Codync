@@ -34,6 +34,9 @@ import kotlinx.coroutines.flow.asStateFlow
  * the needed version isn't on Play yet, and a newer release gets a dismissible reminder. A copy not installed from Google
  * Play gets neither.
  */
+/** This app's release, without a build's suffix ("2.34.0" of "2.34.0-dev"). */
+internal val APP_RELEASE: String = BuildConfig.VERSION_NAME.substringBefore('-')
+
 internal object AppUpdates {
     private val mutableStore = MutableStateFlow<String?>(null)
     /** The version Play has for this phone; null until asked, or when Play can't say. */
@@ -53,7 +56,7 @@ internal object AppUpdates {
         try {
             val info = AppUpdateManagerFactory.create(context).requestAppUpdateInfo()
             mutableStore.value = if (info.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE)
-                UpdateReminder.versionOf(info.availableVersionCode().toLong()) else BuildConfig.VERSION_NAME.substringBefore('-')
+                UpdateReminder.versionOf(info.availableVersionCode().toLong()) else APP_RELEASE
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (_: Exception) { /* Not from Google Play, or Play can't be reached: no reminder. */ }
     }
@@ -82,7 +85,7 @@ internal object AppUpdates {
         Symbol("arrow.down.circle.fill", size = 22.dp, tint = Palette.text)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(tr("Codync {version} is available").replace("{version}", version), style = Type.subheadline.semibold, color = Palette.text)
-            Text(tr("You have {version}.").replace("{version}", BuildConfig.VERSION_NAME.substringBefore('-')), style = Type.footnote, color = Palette.secondary)
+            Text(tr("You have {version}.").replace("{version}", APP_RELEASE), style = Type.footnote, color = Palette.secondary)
             SecondaryButton("Update", Modifier.padding(top = 4.dp)) { AppUpdates.open(context) }
         }
         IconButton("Dismiss", "xmark") { AppUpdates.dismiss(context) }

@@ -21,7 +21,7 @@ internal fun SemanticsNodeInteractionsProvider.onControl(label: String) = onNode
 @Composable internal fun Hosted(content: @Composable () -> Unit) = CodyncTheme { OverlayRoot(content) }
 
 /** The computer screens rendered on their own show. */
-internal val previewComputer = Computer("fixture", "Fixture computer", "fixture")
+internal val previewComputer = Computer("fixture-computer-00001", "Fixture computer", "fixture")
 
 /** A store no account opened, for a screen rendered on its own: it stays loading, so its actions never run. */
 internal fun previewStore(computer: Computer = previewComputer): AppStore {

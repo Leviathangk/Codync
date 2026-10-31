@@ -7,10 +7,13 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.edit
 import com.codync.android.core.Entry
+import com.codync.android.core.LinkState
 import com.codync.android.core.ReviewCancellation
 import com.codync.android.core.ReviewHistory
 import com.codync.android.core.ReviewInvitation
@@ -57,15 +60,30 @@ internal object ReviewPrompt {
     fun setActive(context: Context, active: Boolean) = update(context) { setActive(active, System.currentTimeMillis()) }
     fun sent(context: Context, nonce: String) = update(context) { sent(nonce, System.currentTimeMillis()) }
     fun viewed(context: Context, chat: String, entries: List<Entry>) = update(context) { viewed(chat, entries, System.currentTimeMillis()) }
-    fun returned(context: Context, chat: String) = update(context) { returned(chat, BuildConfig.VERSION_NAME.substringBefore('-'), System.currentTimeMillis()) }
+    fun returned(context: Context, chat: String) = update(context) { returned(chat, APP_RELEASE, System.currentTimeMillis()) }
     fun cancel(context: Context, reason: ReviewCancellation) = update(context) { cancel(reason) }
     fun interrupt(context: Context, token: Any, active: Boolean) = update(context) { interrupt(token, active) }
 
     /** Uses up the opportunity (and this app's own cooldown) before Google Play is asked. */
     fun request(context: Context, token: Long): Boolean {
         var asked = false
-        update(context) { asked = request(token, BuildConfig.VERSION_NAME.substringBefore('-'), System.currentTimeMillis()) }
+        update(context) { asked = request(token, APP_RELEASE, System.currentTimeMillis()) }
         return asked
+    }
+}
+
+/** A computer steady enough to read an answer on or to invite a rating over: connected, current, nothing else showing. */
+internal val AppState.settledForReview: Boolean
+    get() = actualConnection is LinkState.Ready && mismatch == null && error == null && screenRequest == null
+
+/** Leaving [openChat] (the open chat's ID, null on the roster) may invite a rating; opening one turns a waiting invitation down. */
+@Composable internal fun ReviewOnReturn(openChat: String?) {
+    val context = LocalContext.current
+    var lastChat by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(openChat) {
+        if (openChat != null) ReviewPrompt.cancel(context, ReviewCancellation.Interaction)
+        else lastChat?.let { ReviewPrompt.returned(context, it) }
+        lastChat = openChat
     }
 }
 

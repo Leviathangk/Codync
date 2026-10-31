@@ -49,7 +49,7 @@ import kotlinx.coroutines.delay
 @Composable internal fun DictationButton(dictation: Dictation, state: AppState, store: AppStore, height: Dp, draft: () -> String,
     edit: ((String) -> String) -> Unit) {
     val context = LocalContext.current
-    val start = { dictation.start(draft(), store, edit) }
+    val start = { dictation.start(draft(), store.dictationService(context), edit) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) start() else dictation.failure = "Allow microphone access in Settings to dictate."
     }

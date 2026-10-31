@@ -1,6 +1,5 @@
 package com.codync.android
 
-import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
@@ -9,11 +8,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,40 +28,13 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.content.edit
+import com.codync.android.core.ComputerSelection
 import com.codync.android.core.HostRoute
 import com.codync.android.core.LinkState
 import com.codync.android.design.*
 
-// The roster's computers (iOS `ComputerSection`, `ComputerFilterHeader`, `ComputerSelection`): a heading per
-// computer once several show, and the header's filter. What's hidden or folded is kept on this device only.
-
-/** An empty exclusion list means all computers, newly paired ones included (iOS `ComputerSelection`). */
-internal class ComputerSelection(val all: List<String>, hidden: String) {
-    private val hidden = hidden.split(',').filter(String::isNotEmpty).toSet()
-
-    val shown: List<String> get() = all.filter { it !in hidden }.ifEmpty { all }
-
-    fun toggling(id: String): String {
-        if (id !in all) return encoded(all.toSet() - shown.toSet())
-        val visible = shown.toMutableSet()
-        if (id in visible) { if (visible.size > 1) visible.remove(id) } else visible.add(id)
-        return encoded(all.toSet() - visible)
-    }
-
-    fun only(id: String): String = if (id !in all) "" else encoded(all.toSet() - id)
-
-    private fun encoded(ids: Set<String>): String = ids.sorted().joinToString(",")
-}
-
-/** Computers left out of the roster, and computers whose bots are folded away, on this device (iOS `@AppStorage`). */
-internal object RosterComputers {
-    private fun prefs(context: Context) = context.getSharedPreferences("codync-roster", Context.MODE_PRIVATE)
-    fun hidden(context: Context): String = prefs(context).getString("hiddenComputers", "").orEmpty()
-    fun setHidden(context: Context, value: String) = prefs(context).edit { putString("hiddenComputers", value) }
-    fun folded(context: Context): Set<String> = prefs(context).getString("collapsedComputers", "").orEmpty().split(',').filter(String::isNotEmpty).toSet()
-    fun setFolded(context: Context, ids: Set<String>) = prefs(context).edit { putString("collapsedComputers", ids.sorted().joinToString(",")) }
-}
+// The roster's computers (iOS `ComputerSection`, `ComputerFilterHeader`): a heading per computer once several show,
+// and the header's filter. What's hidden or folded is kept on this device only (`RosterComputers`).
 
 /**
  * A computer's heading above its bots: badge, name and connection. Tap folds its bots away; touch and hold,
@@ -119,8 +89,8 @@ internal object RosterComputers {
     manage: () -> Unit) {
     val selection = ComputerSelection(states.map { it.computer.id }, hidden)
     val shown = states.filter { it.computer.id in selection.shown }
-    val summary = connectionSummary(shown)
     val translate = translator()
+    val summary = connectionSummary(shown).let { it.filled(translate(it.template)) }
     DropdownMenu({
         listOf(
             MenuItem("All computers", icon = "desktopcomputer", selected = selection.shown.size == states.size) { setHidden("") },
@@ -134,25 +104,10 @@ internal object RosterComputers {
             MenuItem("Reconnect", icon = "arrow.clockwise", divider = true, enabled = shown.isNotEmpty(), action = reconnect),
             MenuItem("Manage computers", icon = "desktopcomputer", action = manage),
         )
-    }, label = "Computers, ${summaryPhrase(summary)}. Filter conversations") {
+    }, label = "Computers, $summary. Filter conversations") {
         Row(Modifier.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(summaryPhrase(summary), style = Type.system(12f).medium, color = Palette.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(summary, style = Type.system(12f).medium, color = Palette.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Symbol("chevron.down", size = 15.dp, tint = Palette.secondary)
         }
     }
-}
-
-/** "3 connected" and the other summaries, in the app's language (iOS `ComputerFilterHeader.phrase`). */
-@Composable private fun summaryPhrase(raw: String): String {
-    val parts = raw.split(' ', limit = 2)
-    val count = parts.getOrNull(0)?.toIntOrNull()
-    if (parts.size == 2 && count != null) {
-        if (parts[1] == "connected") return tr("%d connected").replace("%d", "$count")
-        if (parts[1] == "offline") return tr("%d offline").replace("%d", "$count")
-    }
-    if (parts.size == 2 && parts[1] == "connected") {
-        val ends = parts[0].split('/').mapNotNull(String::toIntOrNull)
-        if (ends.size == 2) return tr("%d/%d connected").replaceFirst("%d", "${ends[0]}").replaceFirst("%d", "${ends[1]}")
-    }
-    return tr(raw)
 }

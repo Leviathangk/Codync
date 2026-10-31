@@ -37,11 +37,17 @@ class WidgetRefreshWorker(context: Context, parameters: WorkerParameters) : Coro
                 val local = LocalStore(context, owner.context)
                 val computers = withContext(Dispatchers.IO) { local.computers() }
                 if (computers.isEmpty()) return@withTimeout false
-                val usageId = withContext(Dispatchers.IO) { local.lastComputer() }?.takeIf { id -> computers.any { it.id == id } } ?: computers.first().id
+                val usageId = computers.currentId(withContext(Dispatchers.IO) { local.lastComputer() })
                 val identity = withContext(Dispatchers.IO) { local.identity() }
                 // Each computer at once; one that can't be reached keeps the bots it had (and isn't fresh).
                 val reads = coroutineScope {
-                    computers.map { computer -> async { runCatching { read(computer, identity, computer.id == usageId) }.getOrNull() } }.awaitAll()
+                    computers.map { computer ->
+                        async {
+                            try { read(computer, identity, computer.id == usageId) }
+                            catch (cancelled: CancellationException) { throw cancelled }
+                            catch (error: Exception) { android.util.Log.i("Codync", "Widget refresh couldn't read ${computer.id}: ${error.message}"); null }
+                        }
+                    }.awaitAll()
                 }
                 val previous = withContext(Dispatchers.IO) { WidgetStore.feed(context) }
                 val bots = computers.zip(reads).map { (computer, read) ->

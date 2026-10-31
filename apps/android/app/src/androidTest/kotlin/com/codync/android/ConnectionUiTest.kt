@@ -12,8 +12,8 @@ import org.junit.Test
 
 class ConnectionUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
-    private val computer = Computer("fixture", "Fixture computer", "fixture")
-    private val app = AccountContext(loading = false, setupComplete = true, computers = listOf(computer))
+    private val computer = Computer("fixture-computer-00001", "Fixture computer", "fixture")
+    private val app = AccountContext(loading = false, setupComplete = true, account = AccountState(ready = true), computers = listOf(computer))
     private fun fixture(link: LinkState) = AppState(computer, loading = false, rosterLoaded = true, connection = link, actualConnection = link)
 
     @Test fun theComputerRowNamesTheActualConnectionState() = compose.withPreviewAccounts(computer) { accounts ->

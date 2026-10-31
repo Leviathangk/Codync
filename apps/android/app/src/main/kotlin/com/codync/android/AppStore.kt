@@ -16,7 +16,7 @@ import kotlinx.serialization.json.*
  * themselves are `AppStore` extensions in the `AppStore*.kt` files beside it.
  */
 class AppStore internal constructor(
-    private val application: Application,
+    internal val application: Application,
     internal val local: LocalStore,
     computer: Computer,
     contextId: String,
@@ -26,9 +26,10 @@ class AppStore internal constructor(
     private val saveComputer: suspend (Computer) -> Unit,
     /** A chat opened here: the other computers close theirs (one chat is open at a time). */
     internal val opened: (AppStore) -> Unit,
+    /** A usage read finished (the account refreshes the Usage widget). */
+    internal val usageRead: suspend (AppStore) -> Unit = {},
 ) {
     val id: String = computer.id
-    @Suppress("UNCHECKED_CAST") internal fun <T : Application> getApplication(): T = application as T
     private val job = SupervisorJob(parent)
     internal val contextScope = CoroutineScope(job + Dispatchers.Main.immediate)
     /** One change to this computer's saved copy at a time (`changeComputer`). */
@@ -63,14 +64,12 @@ class AppStore internal constructor(
     internal var pluginsRefreshAgain = false
     /** The host version an undecodable event already made the mirror fetch everything again for. */
     internal var rewoundFor: String? = null
-    /** A usage read finished (the account refreshes the Usage widget). */
-    internal var usageRead: suspend (AppStore) -> Unit = {}
 
     /** Opens the mirror and the drafts this phone keeps for the computer; nothing connects yet. */
     internal suspend fun open() {
         val book = DraftBook(local.directory, id)
         withContext(Dispatchers.IO) {
-            database = MirrorDatabase(getApplication(), local.directory, id)
+            database = MirrorDatabase(application, local.directory, id)
             database?.recoverInterrupted()
             val snapshot = requireNotNull(database).snapshot()
             val restored = book.recover(snapshot)
@@ -134,11 +133,11 @@ class AppStore internal constructor(
             pending = snapshot.pending, usage = snapshot.usage, screen = screen, mirrorRevision = snapshot.rev, icons = snapshot.icons,
             selectedBot = current.selectedBot?.takeIf { id -> snapshot.bots.any { it.id == id } }) }
         if (voiceBinding != null && snapshot.bots.none { it.id == voiceBinding?.botId && !it.deleted }) endVoice("Voice chat ended because its bot was removed.")
-        if (PushPreferences.tasks(getApplication())) {
+        if (PushPreferences.tasks(application)) {
             val watched = withContext(Dispatchers.IO) { feed.all().filter { !it.finished }.map { it.botId }.toSet() }
             for (bot in snapshot.bots.filter { it.id in watched }) {
                 val watch = withContext(Dispatchers.IO) { feed.local(bot) }
-                if (watch != null) NotificationDisplay.task(getApplication(), local.referenceId, id, watch)
+                if (watch != null) NotificationDisplay.task(application, local.referenceId, id, watch)
             }
         }
     }
@@ -175,7 +174,7 @@ class AppStore internal constructor(
 
     /** The app is closing: drop the link and save the drafts on the way out. */
     internal fun close(scope: CoroutineScope) {
-        state.value.voice?.id?.let { VoiceService.stop(getApplication(), it) }
+        state.value.voice?.id?.let { VoiceService.stop(application, it) }
         voiceBinding?.engine?.end()
         channel?.close()
         val old = database

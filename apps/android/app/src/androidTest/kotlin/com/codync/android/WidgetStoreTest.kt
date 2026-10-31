@@ -48,6 +48,16 @@ class WidgetStoreTest {
             assertEquals("Newer Account B", WidgetStore.feed(context).bots.single().name)
             val persisted = File(second.directory, "widget-feed.json").readText()
             assertFalse(persisted.contains("Private chat")); assertFalse(persisted.contains("lastMessage"))
+            // A second computer: unreachable, it keeps the bots it showed; forgotten here, they go with it.
+            val key = ByteArray(32) { 3 }
+            val laptop = Computer(RelayCrypto.computerId(key), "Laptop", java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(key))
+            second.saveComputers(listOf(computer, laptop))
+            WidgetStore.publish(context, b, listOf(WidgetComputer(computer, listOf(Bot("shared", "Newer Account B")), true),
+                WidgetComputer(laptop, listOf(Bot("laptop", "Laptop bot")), true)), computer, UsageReport(), false)
+            WidgetStore.publish(context, b, listOf(WidgetComputer(computer, emptyList(), true), WidgetComputer(laptop, null, false)), computer, UsageReport(), false)
+            assertEquals(listOf("Laptop bot"), WidgetStore.feed(context).bots.map { it.name })
+            second.saveComputers(listOf(computer))
+            assertTrue(WidgetStore.feed(context).bots.isEmpty())
             second.saveComputers(emptyList())
             assertNull(WidgetStore.feed(context).computerId)
             assertTrue(WidgetStore.feed(context).bots.isEmpty())

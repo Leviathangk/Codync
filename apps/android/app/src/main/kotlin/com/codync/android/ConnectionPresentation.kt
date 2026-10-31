@@ -94,16 +94,22 @@ internal fun pairingLine(cloud: String?): String {
 internal fun pairingLine(pasted: String, scheme: String): String =
     pairingLine(runCatching { Pairing.parse(pasted, scheme).computer.cloud }.getOrNull())
 
+/** A sentence to translate, and the counts that fill its `%d`s in order. */
+internal data class Phrase(val template: String, val counts: List<Int> = emptyList()) {
+    /** [translated] (the template in the app's language) with the counts filled in. */
+    fun filled(translated: String = template): String = counts.fold(translated) { text, count -> text.replaceFirst("%d", "$count") }
+}
+
 /** "3 connected", "1/2 connected", "Connecting…", "No access": the roster header's summary of the computers it shows (iOS `ConnectionSummary`). */
-internal fun connectionSummary(states: List<AppState>): String {
-    if (states.isEmpty()) return "Computers"
+internal fun connectionSummary(states: List<AppState>): Phrase {
+    if (states.isEmpty()) return Phrase("Computers")
     val online = states.count { it.connection is LinkState.Ready }
     return when {
-        online == states.size -> "$online connected"
-        online > 0 -> "$online/${states.size} connected"
-        states.any { it.connection is LinkState.Connecting } -> "Connecting…"
-        states.all { it.connection.unauthorized } -> "No access"
-        else -> "${states.size} offline"
+        online == states.size -> Phrase("%d connected", listOf(online))
+        online > 0 -> Phrase("%d/%d connected", listOf(online, states.size))
+        states.any { it.connection is LinkState.Connecting } -> Phrase("Connecting…")
+        states.all { it.connection.unauthorized } -> Phrase("No access")
+        else -> Phrase("%d offline", listOf(states.size))
     }
 }
 

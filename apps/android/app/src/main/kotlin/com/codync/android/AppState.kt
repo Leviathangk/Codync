@@ -37,7 +37,7 @@ data class AccountContext(
     val error: String? = null,
 ) {
     /** The computer Usage acts on: the last active one, else the first. */
-    val currentComputerId: String? get() = lastComputerId?.takeIf { id -> computers.any { it.id == id } } ?: computers.firstOrNull()?.id
+    val currentComputerId: String? get() = computers.currentId(lastComputerId)
 }
 
 /** One computer as the UI renders it (iOS `BotStore`); its `AppStore` owns the only writer. */

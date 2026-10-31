@@ -24,7 +24,7 @@ import java.io.File
 class ScreenPresentationTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
     private val bot = Bot("presentation-fixture", "Scout")
-    private val computer = Computer("fixture-computer", "Fixture computer", "fixture-key")
+    private val computer = Computer("fixture-computer-00001", "Fixture computer", "fixture-key")
     private val state = AppState(computer, contextId = "presentation-fixture", loading = false, rosterLoaded = true, bots = listOf(bot))
     private val computers = mapOf(computer.id to state)
     private fun fixture() = AccountContext(contextId = "presentation-fixture", loading = false, setupComplete = true, computers = listOf(computer),

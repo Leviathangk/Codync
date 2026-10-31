@@ -28,10 +28,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import com.codync.android.core.Bot
-import com.codync.android.core.LinkState
 import com.codync.android.core.ReviewCancellation
 import com.codync.android.design.*
 
@@ -51,16 +49,9 @@ private enum class AppTab { Bots, State, Settings }
     if (open != null && tab != AppTab.Bots) tab = AppTab.Bots
     // Leaving a chat whose answer was read may invite a rating, once the roster has stayed clear (iOS `RootView`).
     val context = LocalContext.current
-    val openChat = open?.let { "${app.contextId}/${it.computer.id}/${it.selectedBot}" }
-    var lastChat by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(openChat) {
-        if (openChat != null) ReviewPrompt.cancel(context, ReviewCancellation.Interaction)
-        else lastChat?.let { ReviewPrompt.returned(context, it) }
-        lastChat = openChat
-    }
+    ReviewOnReturn(open?.let { "${app.contextId}/${it.computer.id}/${it.selectedBot}" })
     ReviewInvitationEffect(covered || tab != AppTab.Bots || open != null || states.isEmpty() || states.any { state ->
-        state.actualConnection !is LinkState.Ready || state.mismatch != null || state.error != null || state.screenRequest != null ||
-            state.bots.any { it.status in listOf("working", "needsInput", "error") }
+        !state.settledForReview || state.bots.any { it.status in listOf("working", "needsInput", "error") }
     })
     AnalyticsOnAppear(AnalyticsEvent.ScreenViewed(when (tab) {
         AppTab.Bots -> AnalyticsScreen.Bots

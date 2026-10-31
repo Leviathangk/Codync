@@ -67,15 +67,15 @@ class ConnectionPresentationTest {
     }
 
     @Test fun theHeaderSummarizesTheComputers() {
-        assertEquals("1 connected", connectionSummary(listOf(state(LinkState.Ready(HostRoute.Direct)))))
-        assertEquals("Connecting…", connectionSummary(listOf(state(LinkState.Connecting))))
-        assertEquals("No access", connectionSummary(listOf(state(LinkState.Failed("Revoked", 403)))))
-        assertEquals("1 offline", connectionSummary(listOf(state(LinkState.ComputerOffline(null)))))
-        assertEquals("Computers", connectionSummary(emptyList()))
+        assertEquals("1 connected", connectionSummary(listOf(state(LinkState.Ready(HostRoute.Direct)))).filled())
+        assertEquals("Connecting…", connectionSummary(listOf(state(LinkState.Connecting))).filled())
+        assertEquals("No access", connectionSummary(listOf(state(LinkState.Failed("Revoked", 403)))).filled())
+        assertEquals("1 offline", connectionSummary(listOf(state(LinkState.ComputerOffline(null)))).filled())
+        assertEquals("Computers", connectionSummary(emptyList()).filled())
         val laptop = Computer("laptop", "Laptop", "laptop")
-        assertEquals("2 connected", connectionSummary(listOf(state(LinkState.Ready(HostRoute.Direct)), state(LinkState.Ready(HostRoute.Relay), laptop))))
-        assertEquals("1/2 connected", connectionSummary(listOf(state(LinkState.Ready(HostRoute.Direct)), state(LinkState.ComputerOffline(null), laptop))))
-        assertEquals("2 offline", connectionSummary(listOf(state(LinkState.Failed("Revoked", 403)), state(LinkState.ComputerOffline(null), laptop))))
+        assertEquals("2 connected", connectionSummary(listOf(state(LinkState.Ready(HostRoute.Direct)), state(LinkState.Ready(HostRoute.Relay), laptop))).filled())
+        assertEquals("1/2 connected", connectionSummary(listOf(state(LinkState.Ready(HostRoute.Direct)), state(LinkState.ComputerOffline(null), laptop))).filled())
+        assertEquals("2 offline", connectionSummary(listOf(state(LinkState.Failed("Revoked", 403)), state(LinkState.ComputerOffline(null), laptop))).filled())
     }
 
     @Test fun aComputerTurningThisPhoneAwayOrReplacedByANewIdentityIsStale() {

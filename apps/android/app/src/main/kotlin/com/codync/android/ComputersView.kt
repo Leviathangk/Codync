@@ -107,8 +107,9 @@ import kotlinx.serialization.json.put
     CodyncSheet(networkState?.network?.let { networkState to it }, { network = null }) { (state, view) ->
         accounts.store(state.computer.id)?.let { NetworkSheet(view, it::refreshNetwork) }
     }
-    val colorStore = accounts.store(coloring)
-    SwatchPanel(coloring != null, colorStore?.state?.value?.computer?.color, { coloring = null }) { colorStore?.setColor(it) }
+    SwatchPanel(coloring != null, states.firstOrNull { it.computer.id == coloring }?.computer?.color, { coloring = null }) {
+        accounts.store(coloring)?.setColor(it)
+    }
     val forgetting = confirmForget
     CodyncDialog(tr("Remove {name}?").replace("{name}", forgetting?.computer?.name ?: "computer"), forgetting != null, { confirmForget = null },
         "Its bots and conversations stay on that computer. You can pair again any time.") {

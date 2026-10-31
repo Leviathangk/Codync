@@ -50,7 +50,7 @@ on one emulator, 2026-10-31).
 
 | What | Code | What it needs |
 | --- | --- | --- |
-| Revoke this phone's access (also on Remove of a computer approved through the account); removing older copies of the computer from the account | `core/.../CloudClient.kt` (`revokeAccess`, `removeComputer`), `AppStoreAccount.kt`, `ComputersView.kt` | A signed-in account on the emulator or a phone; only request tests cover it |
+| Revoke this phone's access (also on Remove of a computer approved through the account); removing older copies of the computer from the account | `core/.../CloudClient.kt` (`revokeAccess`, `removeComputer`), `AccountStoreAccount.kt`, `ComputersView.kt` | A signed-in account on the emulator or a phone; only request tests cover it |
 | Push delivery (alerts, background Live update refresh) | `PushService.kt`, `AppStoreNotifications.kt` | A device with Google Play services running the official build (Firebase and the relay's FCM secret are set up since 2026-10-24). The notification look is covered by `AlertNotificationTest` |
 | OpenAI Realtime, Gemini Live and Speech mode with a real key | `WebRtcPeer.kt`, `core/.../OpenAIRealtimeEngine.kt`, `GeminiLiveEngine.kt`, `CloudSpeechEngine.kt` | A provider key on the paired computer; the fallback to on-device voice is verified |
 | Remote screen: Chinese IME composition, a hardware keyboard, the TURN relay path and its credential renewal | `ScreenKeys.kt`, `ScreenSession.kt`, `ScreenView.kt` | A computer it's safe to type into, and a signed-in host for the relay; viewing, trackpad and pinch zoom are verified |
@@ -75,7 +75,7 @@ on one emulator, 2026-10-31).
   recognizer; it never falls back to online recognition (iOS may use Apple's servers).
 - **Jump to latest** is an opaque disc: it sits in the scrolling content, so there's no blur under it.
 - **A removed computer's open chat** closes with it; the iPhone shows *This computer was removed* in its place.
-- **Dictation on device** stops at a pause, like the iPhone's; Android's recognizer runs on the phone where it can, otherwise the phone's own speech service.
+- **Dictation on device** stops at a pause, like the iPhone's; Android's recognizer runs on the phone where it can (it tries the phone's own speech service once when that one lacks the language), otherwise the phone's own speech service.
 - **Shortcuts' lead** (Settings → Shortcuts → Lead to call) is part of the Apple-only Shortcuts actions.
 
 ## Before a Play release

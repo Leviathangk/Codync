@@ -1,6 +1,5 @@
 package com.codync.android
 
-import android.app.Application
 import android.net.Uri
 import java.io.IOException
 import androidx.lifecycle.viewModelScope
@@ -26,7 +25,7 @@ fun AppStore.connectorSignIn(id: String, requestId: String? = null) = action("oa
         withContext(Dispatchers.IO) { ConnectorOAuthBook(local.directory).clear() }
     }
     val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse(plan.url)).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-    try { getApplication<Application>().startActivity(intent) }
+    try { application.startActivity(intent) }
     catch (error: Exception) { withContext(Dispatchers.IO) { ConnectorOAuthBook(local.directory).clear() }; throw IOException("Couldn't open the sign-in browser.", error) }
     if (plan.callback == "host") {
         val complete = withTimeoutOrNull(600_000) {

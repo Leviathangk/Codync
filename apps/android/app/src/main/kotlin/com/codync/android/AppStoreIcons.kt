@@ -1,6 +1,5 @@
 package com.codync.android
 
-import android.app.Application
 import android.net.Uri
 import android.util.Base64
 import com.codync.android.core.*
@@ -12,7 +11,7 @@ internal fun AppStore.setIcon(target: String, file: Uri? = null, url: String? = 
     action("icon:$target") {
         require((file == null && url == null) || local.contextId != "local") { "Sign in to use custom images." }
         val data = file?.let { uri -> withContext(Dispatchers.IO) {
-            val bytes = getApplication<Application>().contentResolver.openInputStream(uri)?.use { input ->
+            val bytes = application.contentResolver.openInputStream(uri)?.use { input ->
                 val output = java.io.ByteArrayOutputStream()
                 val buffer = ByteArray(8192)
                 while (output.size() <= 5 * 1024 * 1024) {

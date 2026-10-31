@@ -46,8 +46,8 @@ import com.codync.android.design.*
     var draft by remember { mutableStateOf(BotDraft()) }
     val online = state.actualConnection is LinkState.Ready
     val dismiss = LocalDismissModal.current
-    // A new bot starts on an installed agent we know; the host turns on every connector and skill.
-    LaunchedEffect(state.hello) { draft = fillDefaults(draft, state) }
+    // A new bot starts on an installed agent we know (again on another computer); the host turns on every connector and skill.
+    LaunchedEffect(state.computer.id, state.hello) { draft = fillDefaults(draft, state) }
     CreateLayout(state, "New bot", draft.name, { draft = draft.copy(name = it) }, "Name your bot", online, { store.saveBot(draft) { dismiss() } },
         { CharacterAvatar(draft.avatarShape, draft.avatarColor, 96.dp) }) {
         AvatarPicker(draft.avatarShape, draft.avatarColor, { draft = draft.copy(avatarShape = it) }, { draft = draft.copy(avatarColor = it) })

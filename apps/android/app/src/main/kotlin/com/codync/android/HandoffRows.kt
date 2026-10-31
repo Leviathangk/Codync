@@ -97,13 +97,3 @@ import kotlinx.serialization.json.JsonObject
         }
     }
 }
-
-/** Carries on with the bot's current conversation instead of the handoff. */
-internal fun AppStore.keepConversation(entry: Entry) = command("keepConversation", body("entryId" to entry.id), "handoff:" + entry.id)
-
-/** Saves the user's version of a handoff that hasn't been sent; whether it did (its error shows). */
-internal suspend fun AppStore.editHandoff(entry: Entry, text: String): Boolean = try {
-    hostCall("editHandoff", body("entryId" to entry.id, "text" to text), 30_000)
-    true
-} catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
-catch (error: Exception) { showError(error); false }
