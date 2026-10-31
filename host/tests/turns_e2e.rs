@@ -335,6 +335,33 @@ async fn a_new_bot_works_in_its_agents_auto_mode_until_the_user_picks_another() 
 }
 
 #[tokio::test]
+async fn a_bot_never_works_in_a_mode_its_agent_refused_to_switch_to() {
+    if python_missing() {
+        return;
+    }
+    let host = Host::start().await;
+    let bot = host.bot("Stuck", "tests/fixtures/mode_agent.py").await;
+    let folder = host.home.join("Stuck");
+    std::fs::write(folder.join("stuck"), "").unwrap();
+    host.call("updateBot", json!({"id": bot, "mode": "auto"})).await;
+
+    host.call("send", json!({"botId": bot, "text": "one"})).await;
+    let refused = |e: &Value| e["data"]["text"].as_str().is_some_and(|t| t.contains("mode switch refused"));
+    let notice = host.wait_for(&bot, Duration::from_mins(1), refused).await;
+    assert_eq!(notice["kind"], "notice", "{notice}");
+    // Once the agent switches, the next turn runs in the bot's mode.
+    std::fs::remove_file(folder.join("stuck")).unwrap();
+    host.call("send", json!({"botId": bot, "text": "two"})).await;
+    host.wait_for(&bot, Duration::from_mins(1), speed_reply("mode agent ", "two")).await;
+    let entries = host.entries(&bot).await;
+    assert!(
+        !entries
+            .iter()
+            .any(|e| e["kind"] == "agent" && e["data"]["text"].as_str().is_some_and(|t| t.contains("· one")))
+    );
+}
+
+#[tokio::test]
 async fn a_session_that_ended_in_the_agent_is_closed_and_loaded_again() {
     if python_missing() {
         return;

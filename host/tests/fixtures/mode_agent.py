@@ -1,7 +1,8 @@
 """ACP agent with session modes like Codex's adapter: Read-only, Auto review (id `agent`) and Full access, as a
 `mode` config option that starts on Read-only. It logs session calls to calls.jsonl in its folder and answers each
 prompt with its mode and the prompt text. With a `planless` file in its folder, a prompt moves the session to
-Full access by itself (the way Claude leaves Plan once the plan is approved)."""
+Full access by itself (the way Claude leaves Plan once the plan is approved); with a `stuck` file it refuses
+every mode switch."""
 
 import json
 import os
@@ -41,6 +42,8 @@ for line in sys.stdin:
     elif method in ("session/new", "session/load"):
         log({"method": method})
         send({"id": rid, "result": {"sessionId": "s1", **options()}})
+    elif method == "session/set_config_option" and os.path.exists("stuck"):
+        send({"id": rid, "error": {"code": -32603, "message": "mode switch refused"}})
     elif method == "session/set_config_option":
         log({"method": method, "configId": params["configId"], "value": params["value"]})
         mode = params["value"]
