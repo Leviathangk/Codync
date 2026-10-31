@@ -141,6 +141,8 @@ private class ComputerRoster(context: Context, val key: String) {
         // Pull to refresh reconnects every computer and asks the account for its computers again (iOS `refreshable`).
         PullToRefresh({ accounts.refreshRoster() }, Modifier.fillMaxSize(), indicatorTop = top + 50.dp) {
         LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = top + 56.dp, bottom = bottomInset)) {
+            // A newer app release (dismissible; everything still works). Computers update themselves, so a newer host gets no reminder here.
+            item("appUpdate") { AppUpdateReminder(Modifier.padding(vertical = 4.dp)) }
             // One computer: its update notice leads the list. A computer waiting for an update has its card instead; its bots may not be readable yet.
             if (!grouped) for (state in shown) state.mismatch?.let { mismatch -> item("update:${state.computer.id}") {
                 accounts.store(state.computer.id)?.let { store -> UpdateNeededCard(state, mismatch, store::requestHostUpdate, Modifier.padding(vertical = 8.dp)) }

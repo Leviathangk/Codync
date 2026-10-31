@@ -54,6 +54,15 @@
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_provider" />
         </receiver>
+        <!-- Fixed-provider widgets appear as separate choices in the widget picker, as on the iPhone. -->
+        <receiver android:name=".ClaudeUsageWidgetReceiver" android:exported="true" android:label="Claude Code">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_claude" />
+        </receiver>
+        <receiver android:name=".CodexUsageWidgetReceiver" android:exported="true" android:label="Codex">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_codex" />
+        </receiver>
         <receiver android:name=".UsageWidgetReceiver" android:exported="true" android:label="Usage limits">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_usage" />

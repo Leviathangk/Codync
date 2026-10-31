@@ -187,6 +187,7 @@ class AccountStore(application: Application) : AndroidViewModel(application) {
 
     fun setForeground(active: Boolean) {
         foreground = active
+        ReviewPrompt.setActive(getApplication(), active)
         PushDelivery.foreground = active || stores.value.any { it.state.value.voice != null }
         for (store in stores.value) store.setForeground(active)
         if (active && !state.value.loading) refreshCloud()

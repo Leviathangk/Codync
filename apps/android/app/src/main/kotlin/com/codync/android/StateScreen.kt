@@ -35,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -118,7 +119,11 @@ internal fun openNotificationSettings(context: Context) = context.startActivity(
 /** The State tab's Widget page: the installed widgets and these previews share their layouts. */
 @Composable private fun WidgetGallery(app: AccountContext, usage: JsonObject?, accounts: AccountStore?, active: Boolean, keepInView: () -> Unit) {
     val context = LocalContext.current
-    val installed = rememberOnResume { runCatching { CodyncWidgets.installed(context) }.getOrNull() }
+    val resumed = rememberOnResume { runCatching { CodyncWidgets.installed(context) }.getOrNull() }
+    // "Check again" reads them now; coming back to the app reads them anew too.
+    var checkedAgain by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(resumed) { checkedAgain = null }
+    val installed = checkedAgain ?: resumed
     var asked by remember { mutableIntStateOf(0) }
     val allowed = rememberOnResume { notificationsAllowed(context) } || asked > 0 && notificationsAllowed(context)
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -155,8 +160,10 @@ internal fun openNotificationSettings(context: Context) = context.startActivity(
                     else openNotificationSettings(context)
                 }))
         }
-        Text(if (installed == null) "Couldn't check your widgets. You can still add one below." else "Steps check themselves as you finish them.",
-            style = Type.caption2, color = Palette.tertiary)
+        if (installed == null) Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("Couldn't check your widgets. You can still add one using the steps below.", style = Type.caption, color = Palette.secondary)
+            SecondaryButton("Check again") { checkedAgain = runCatching { CodyncWidgets.installed(context) }.getOrNull() }
+        } else Text("Steps check themselves as you finish them.", style = Type.caption2, color = Palette.tertiary)
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -196,7 +203,7 @@ internal fun openNotificationSettings(context: Context) = context.startActivity(
                 Text(when (kind) {
                     "usage" -> "Small shows the tightest limit. Medium shows two windows. Large adds a summary and up to four limits."
                     "limits" -> "Every provider's limits in one widget. The tightest leads; small shows two more and medium up to four."
-                    "team" -> "Four bots as characters with a dot for each one at work; the bots that need you come first."
+                    "team" -> "Four bots as characters with a dot for each one at work. Touch and hold the widget, then Edit Widget to choose who sits in each spot; empty spots show the bots that need you first."
                     else -> "See who needs you and who's still working. Large shows up to six bots."
                 }, style = Type.caption, color = Palette.secondary)
             }

@@ -129,16 +129,25 @@ class VoiceService : Service() {
             .setAction(Intent.ACTION_VIEW).setData(url), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         fun action(kind: String) = PendingIntent.getService(this, kind.hashCode(), Intent(this, VoiceService::class.java)
             .setAction(kind).putExtra(ID, callId), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        // An ongoing call, as Android draws one (iOS: the call's Live Activity): the bot's face and name, the call's length
+        // counting up, hang up and mute here, and the status bar's call chip while it lasts.
+        val face = bot?.let {
+            com.codync.android.design.customAvatarBitmap(it.customIcon?.dataUrl, it.customIcon?.tinted == true, 128,
+                com.codync.android.design.AvatarPalette.colors[it.avatarColor]?.toInt() ?: 0xFF1084FE.toInt())
+                ?: com.codync.android.design.characterAvatarBitmap(it.avatarShape, it.avatarColor, 128, 0xFF141414.toInt())
+        }
+        val caller = androidx.core.app.Person.Builder().setName(bot?.name ?: "Codync").setImportant(true)
+            .apply { face?.let { setIcon(androidx.core.graphics.drawable.IconCompat.createWithBitmap(it)) } }.build()
         return NotificationCompat.Builder(this, CHANNEL).setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Voice chat · ${bot?.name ?: "Codync"}")
+            .setContentTitle(bot?.name ?: "Codync")
             .setContentText(callNotificationText(state, progress))
-            .setStyle(NotificationCompat.BigTextStyle().bigText(callNotificationText(state, progress, "\n")))
+            .setStyle(NotificationCompat.CallStyle.forOngoingCall(caller, action(END)))
             // The call's length counts up beside the bot's name.
             .setUsesChronometer(true).setShowWhen(true)
             .setWhen(callStartedWallClock(session?.startedAt, SystemClock.elapsedRealtime(), System.currentTimeMillis()))
             .setContentIntent(content).setOngoing(true).setCategory(NotificationCompat.CATEGORY_CALL)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE).setOnlyAlertOnce(true)
-            .addAction(0, if (state.muted) "Unmute" else "Mute", action(MUTE)).addAction(0, "End call", action(END)).build()
+            .addAction(0, if (state.muted) "Unmute" else "Mute", action(MUTE)).build()
     }
     private fun end(error: String?) {
         if (ending) return

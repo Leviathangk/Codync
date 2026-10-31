@@ -17,6 +17,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.collectAsState
 import com.codync.android.core.AppVersion
 import com.codync.android.core.VersionMismatch
 import com.codync.android.design.*
@@ -55,8 +57,16 @@ internal val AppState.mismatch: VersionMismatch? get() {
                 is VersionMismatch.UpdateHost -> "Update Codync on $host"
             }, style = Type.subheadline.semibold, color = Palette.text)
             when (mismatch) {
-                is VersionMismatch.UpdateApp -> Text("${state.hello?.text("version")?.let { "$host runs Codync $it and" } ?: host} needs this app to be " +
-                    "${mismatch.minimum} or newer. Your chats are safe on the computer.", style = Type.footnote, color = Palette.secondary)
+                is VersionMismatch.UpdateApp -> {
+                    val context = LocalContext.current
+                    val store by AppUpdates.store.collectAsState()
+                    // Google Play doesn't have the version this computer needs yet (an unknown version keeps the button: the page says).
+                    val inReview = store?.let { AppVersion.isBelow(it, mismatch.minimum) } == true
+                    Text("${state.hello?.text("version")?.let { "$host runs Codync $it and" } ?: host} needs this app to be " +
+                        "${mismatch.minimum} or newer. Your chats are safe on the computer." +
+                        if (inReview) " That version is still in Google Play review; it'll be there soon." else "", style = Type.footnote, color = Palette.secondary)
+                    PrimaryButton("Update Codync", Modifier.padding(top = 4.dp), enabled = !inReview) { AppUpdates.open(context) }
+                }
                 is VersionMismatch.UpdateHost -> {
                     val notice = hostUpdateNotice(host, mismatch, state.hello?.text("os"), state.canUpdateHost, state.hostUpdate, now)
                     Text(notice.detail, style = Type.footnote, color = Palette.secondary)

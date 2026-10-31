@@ -96,6 +96,11 @@ import com.kyant.shapes.Capsule
     val reply = { entry: Entry -> replyId = entry.id }
     // The chat ignores Full conversation over it: it stays put underneath.
     val chatState = state.copy(trace = false)
+    // ponytail: "in sight" is the open chat with nothing over it, not its scroll position; add that if ratings come too early.
+    ReviewReading("${state.contextId}/${state.computer.id}/${bot.id}", state.entries.filter { it.botId == bot.id },
+        ready = details == null && viewing == null && peer == null && callLine == null && !state.trace && state.voice == null &&
+            state.drafts[bot.id]?.let { it.text.isBlank() && it.files.isEmpty() } != false && state.actualConnection is LinkState.Ready &&
+            state.mismatch == null && state.error == null && state.screenRequest == null && bot.status == "idle")
     GlassStage(Modifier.fillMaxSize().background(Palette.background), chrome = {
         // Down to just above the header's bottom; the bottom one stops under Jump to latest.
         ScrollEdge(Edge.Top, top + 84.dp)

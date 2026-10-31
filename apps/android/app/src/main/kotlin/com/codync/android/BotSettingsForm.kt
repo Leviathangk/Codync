@@ -27,6 +27,8 @@ import com.codync.android.design.*
 import com.kyant.shapes.RoundedRectangle
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 
 /**
  * Which settings a form shows (iOS `FormPart`): all of them (the editor), what changes often (instructions and the agent:
@@ -38,6 +40,8 @@ internal enum class FormPart { All, Often, Rarely }
 @Composable internal fun BotSettingsForm(state: AppState, store: AppStore, draft: BotDraft, change: (BotDraft) -> Unit, part: FormPart,
     modifier: Modifier = Modifier) {
     var folders by remember { mutableStateOf(false) }
+    // The Avatar row unfolds the picker (iOS `pickingAvatar`).
+    var pickingAvatar by remember { mutableStateOf(false) }
     var viewingSkill by remember { mutableStateOf<SkillRef?>(null) }
     var addingFallback by remember { mutableStateOf(false) }
     val online = state.actualConnection is LinkState.Ready
@@ -46,14 +50,10 @@ internal enum class FormPart { All, Often, Rarely }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(30.dp)) {
         when (part) {
             FormPart.All -> {
-                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Box(Modifier.clip(RoundedRectangle(24.dp)).background(Palette.bubbleAgent).padding(18.dp)) {
-                        CharacterAvatar(draft.avatarShape, draft.avatarColor, 96.dp)
-                    }
-                    AvatarPicker(draft.avatarShape, draft.avatarColor, { change(draft.copy(avatarShape = it)) }, { change(draft.copy(avatarColor = it)) })
-                    draft.id?.let { CustomIconEditor("bot:$it", state, store) }
+                CardSection("Profile") {
+                    avatarRows(state, store, draft, change, pickingAvatar) { pickingAvatar = !pickingAvatar }
+                    nameRow(draft, change); instructionsRow(draft, change); createdByRow(state, bot)
                 }
-                CardSection("Profile") { nameRow(draft, change); instructionsRow(draft, change); createdByRow(state, bot) }
                 CardSection("Agent") {
                     fallbackBanner(state, store, bot); computerRow(state, online)
                     agentRows(state, store, draft, change, bot) { addingFallback = true }; placeRows(draft, change) { folders = true }
@@ -74,8 +74,7 @@ internal enum class FormPart { All, Often, Rarely }
             }
             FormPart.Rarely -> {
                 CardSection("Profile") {
-                    row { AvatarPicker(draft.avatarShape, draft.avatarColor, { change(draft.copy(avatarShape = it)) }, { change(draft.copy(avatarColor = it)) }) }
-                    draft.id?.let { id -> row { CustomIconEditor("bot:$id", state, store) } }
+                    avatarRows(state, store, draft, change, pickingAvatar) { pickingAvatar = !pickingAvatar }
                     nameRow(draft, change); createdByRow(state, bot)
                 }
                 // The agent and its model are on the Details page; what's left is where it works.
@@ -99,6 +98,26 @@ internal enum class FormPart { All, Often, Rarely }
 @Composable private fun OfflineNote() = Text(tr("Reconnect to this computer to save settings."), style = Type.caption, color = Palette.warning)
 
 // A bot left unnamed at creation is named from its first conversations; rename it any time after.
+/** "Avatar" with the face as it is; tapping it unfolds the picker and the custom icon (iOS `BotEditorView` Profile). */
+private fun CardRows.avatarRows(state: AppState, store: AppStore, draft: BotDraft, change: (BotDraft) -> Unit, picking: Boolean, toggle: () -> Unit) {
+    row {
+        val icon = draft.id?.let { state.icons["bot:$it"] }
+        Box(Modifier.fillMaxWidth().plainButton(action = toggle).semantics { contentDescription = "Edit Bot avatar" }) {
+            ValueRow("Avatar") {
+                Box(Modifier.clip(RoundedRectangle(10.dp)).background(Palette.bubbleAgent).padding(5.dp)) {
+                    CharacterAvatar(draft.avatarShape, draft.avatarColor, 28.dp, customImage = icon?.dataUrl, customTinted = icon?.tinted == true)
+                }
+            }
+        }
+    }
+    if (picking) row {
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            AvatarPicker(draft.avatarShape, draft.avatarColor, { change(draft.copy(avatarShape = it)) }, { change(draft.copy(avatarColor = it)) })
+            draft.id?.let { CustomIconEditor("bot:$it", state, store) }
+        }
+    }
+}
+
 private fun CardRows.nameRow(draft: BotDraft, change: (BotDraft) -> Unit) =
     row { Field("Name") { FieldBox(draft.name, { change(draft.copy(name = it)) }, "Name") } }
 

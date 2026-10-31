@@ -91,12 +91,13 @@ internal object RosterComputers {
                 )
             }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             ComputerBadge(state.hello?.text("device"), 20.dp, state.computer.color)
-            Text(state.hostName, Modifier.weight(1f, fill = false), style = Type.subheadline.semibold, color = Palette.secondary,
+            // The name and the connection share the row; the connection sits at the trailing edge, before the heading's buttons.
+            Text(state.hostName, Modifier.weight(1f), style = Type.subheadline.semibold, color = Palette.secondary,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
-            // The connection sits at the trailing edge, before the heading's buttons.
-            Spacer(Modifier.weight(1f).width(8.dp))
-            Text(tr(status), style = Type.subheadline, color = if (offline) Palette.warning else Palette.tertiary, maxLines = 1,
-                overflow = TextOverflow.Ellipsis)
+            Box(Modifier.weight(1f).padding(start = 8.dp), contentAlignment = Alignment.CenterEnd) {
+                Text(tr(status), style = Type.subheadline, color = if (offline) Palette.warning else Palette.tertiary, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis)
+            }
             if (link is LinkState.Ready) Symbol(if (link.route == HostRoute.Direct) "wifi" else "cloud", size = 15.dp, tint = Palette.tertiary)
             Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
                 Symbol("chevron.down", Modifier.rotate(turn), size = 14.dp, tint = Palette.tertiary)

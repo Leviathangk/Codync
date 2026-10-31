@@ -28,7 +28,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
 import com.codync.android.core.Bot
+import com.codync.android.core.LinkState
+import com.codync.android.core.ReviewCancellation
 import com.codync.android.design.*
 
 private enum class AppTab { Bots, State, Settings }
@@ -39,12 +43,25 @@ private enum class AppTab { Bots, State, Settings }
  */
 @Composable internal fun MainTabs(app: AccountContext, states: List<AppState>, accounts: AccountStore, account: () -> Unit, manage: () -> Unit,
     usage: () -> Unit, newBot: (String) -> Unit, newGroup: (String) -> Unit, edit: (String, Bot) -> Unit, extensions: (String) -> Unit,
-    chat: @Composable (AppState) -> Unit) {
+    covered: Boolean, chat: @Composable (AppState) -> Unit) {
     var tab by rememberSaveable { mutableStateOf(AppTab.Bots) }
     // The open chat, on whichever computer it lives (one at a time).
     val open = states.firstOrNull { it.selectedBot != null }
     // Opening a bot (notification, widget, link) always lands on the Bots tab.
     if (open != null && tab != AppTab.Bots) tab = AppTab.Bots
+    // Leaving a chat whose answer was read may invite a rating, once the roster has stayed clear (iOS `RootView`).
+    val context = LocalContext.current
+    val openChat = open?.let { "${app.contextId}/${it.computer.id}/${it.selectedBot}" }
+    var lastChat by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(openChat) {
+        if (openChat != null) ReviewPrompt.cancel(context, ReviewCancellation.Interaction)
+        else lastChat?.let { ReviewPrompt.returned(context, it) }
+        lastChat = openChat
+    }
+    ReviewInvitationEffect(covered || tab != AppTab.Bots || open != null || states.isEmpty() || states.any { state ->
+        state.actualConnection !is LinkState.Ready || state.mismatch != null || state.error != null || state.screenRequest != null ||
+            state.bots.any { it.status in listOf("working", "needsInput", "error") }
+    })
     AnalyticsOnAppear(AnalyticsEvent.ScreenViewed(when (tab) {
         AppTab.Bots -> AnalyticsScreen.Bots
         AppTab.State -> AnalyticsScreen.State
@@ -76,7 +93,10 @@ private enum class AppTab { Bots, State, Settings }
             }
         }
     }) {
-        Box(Modifier.fillMaxSize().tabLayer(tab == AppTab.Bots)) {
+        // A touch on the roster turns down a waiting invitation, as on the iPhone.
+        Box(Modifier.fillMaxSize().tabLayer(tab == AppTab.Bots).pointerInput(Unit) {
+            awaitPointerEventScope { while (true) { awaitPointerEvent(PointerEventPass.Initial); ReviewPrompt.cancel(context, ReviewCancellation.Interaction) } }
+        }) {
             // A chat's entry names its computer and bot; it keeps its state while sliding away.
             var shown by remember { mutableStateOf<AppState?>(null) }
             if (open != null) shown = open

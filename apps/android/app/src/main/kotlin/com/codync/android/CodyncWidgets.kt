@@ -73,11 +73,14 @@ import kotlin.math.roundToInt
 // State tab's previews: Provider usage, Usage limits, Bots and Team.
 
 class ProviderWidget : CodyncWidget(WidgetKind.Provider)
+/** Claude Code's or Codex's usage, without a provider to choose (iOS `ClaudeUsageWidget`, `CodexUsageWidget`). */
+class ClaudeUsageWidget : CodyncWidget(WidgetKind.Provider, fixed = "claude")
+class CodexUsageWidget : CodyncWidget(WidgetKind.Provider, fixed = "codex")
 class UsageWidget : CodyncWidget(WidgetKind.Usage)
 class BotsWidget : CodyncWidget(WidgetKind.Bots)
 class TeamWidget : CodyncWidget(WidgetKind.Team)
 
-abstract class CodyncWidget(private val kind: WidgetKind) : GlanceAppWidget() {
+abstract class CodyncWidget(private val kind: WidgetKind, private val fixed: String? = null) : GlanceAppWidget() {
     override val sizeMode = SizeMode.Responsive(setOf(SMALL, MEDIUM, LARGE))
     override val previewSizeMode = sizeMode
     override suspend fun provideGlance(context: Context, id: GlanceId) {
@@ -85,7 +88,7 @@ abstract class CodyncWidget(private val kind: WidgetKind) : GlanceAppWidget() {
         provideContent {
             val revision by WidgetStore.changes.collectAsState()
             val feed = remember(revision) { WidgetStore.feed(context) }
-            val provider = remember(revision) { WidgetStore.provider(context, widget) }
+            val provider = remember(revision) { fixed ?: WidgetStore.provider(context, widget) }
             val team = remember(revision) { WidgetStore.team(context, widget) }
             androidx.compose.runtime.key(revision) {
                 WidgetCard(feed, kind, provider, team, sample = false)
@@ -93,7 +96,7 @@ abstract class CodyncWidget(private val kind: WidgetKind) : GlanceAppWidget() {
         }
     }
     override suspend fun providePreview(context: Context, widgetCategory: Int) {
-        provideContent { WidgetCard(sampleFeed(), kind, "claude", emptyList(), sample = true) }
+        provideContent { WidgetCard(sampleFeed(), kind, fixed ?: "claude", emptyList(), sample = true) }
     }
 
     private companion object {
@@ -425,6 +428,8 @@ internal fun sampleFeed(): WidgetFeed = WidgetFeed(computerId = "sample", comput
     botsAt = System.currentTimeMillis(), usage = WidgetPreview.usage, usageAt = System.currentTimeMillis())
 
 class ProviderWidgetReceiver : CodyncWidgetReceiver() { override val glanceAppWidget = ProviderWidget() }
+class ClaudeUsageWidgetReceiver : CodyncWidgetReceiver() { override val glanceAppWidget = ClaudeUsageWidget() }
+class CodexUsageWidgetReceiver : CodyncWidgetReceiver() { override val glanceAppWidget = CodexUsageWidget() }
 class UsageWidgetReceiver : CodyncWidgetReceiver() { override val glanceAppWidget = UsageWidget() }
 class BotsWidgetReceiver : CodyncWidgetReceiver() { override val glanceAppWidget = BotsWidget() }
 class TeamWidgetReceiver : CodyncWidgetReceiver() { override val glanceAppWidget = TeamWidget() }
@@ -439,12 +444,13 @@ abstract class CodyncWidgetReceiver : GlanceAppWidgetReceiver() {
 }
 
 internal object CodyncWidgets {
-    val receivers = listOf(ProviderWidgetReceiver::class.java, UsageWidgetReceiver::class.java, BotsWidgetReceiver::class.java,
-        TeamWidgetReceiver::class.java)
+    val receivers = listOf(ProviderWidgetReceiver::class.java, ClaudeUsageWidgetReceiver::class.java, CodexUsageWidgetReceiver::class.java,
+        UsageWidgetReceiver::class.java, BotsWidgetReceiver::class.java, TeamWidgetReceiver::class.java)
     fun installed(context: Context): Int = receivers.sumOf { AppWidgetManager.getInstance(context).getAppWidgetIds(ComponentName(context, it)).size }
     suspend fun update(context: Context) {
         if (installed(context) == 0) return
-        ProviderWidget().updateAll(context); UsageWidget().updateAll(context); BotsWidget().updateAll(context); TeamWidget().updateAll(context)
+        ProviderWidget().updateAll(context); ClaudeUsageWidget().updateAll(context); CodexUsageWidget().updateAll(context)
+        UsageWidget().updateAll(context); BotsWidget().updateAll(context); TeamWidget().updateAll(context)
     }
     /** The launcher's widget picker shows each widget drawn from sample data (Android 15+); the system rate-limits it. */
     suspend fun publishPreviews(context: Context) {

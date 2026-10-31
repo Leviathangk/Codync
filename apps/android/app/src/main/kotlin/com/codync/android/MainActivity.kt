@@ -94,7 +94,8 @@ class MainActivity : ComponentActivity() {
                             isAppearanceLightNavigationBars = !darkBars
                         }
                     }
-                    CodyncTheme(dark = dark) { OverlayRoot { CodyncApp(state, computers, accounts); LaunchLayer(state.loading) } }
+                    CodyncTheme(dark = dark) { OverlayRoot { CodyncApp(state, computers, accounts)
+                        LaunchLayer(state.loading, state.computers.all { computers[it.id]?.widgetBotsCurrent == true }) } }
                 }
             }
         }
@@ -110,7 +111,10 @@ class MainActivity : ComponentActivity() {
         setIntent(intent)
         handle(intent)
     }
-    override fun onStart() { super.onStart(); accounts.setForeground(true); Analytics.becameActive(applicationContext) }
+    override fun onStart() {
+        super.onStart(); accounts.setForeground(true); Analytics.becameActive(applicationContext)
+        lifecycleScope.launch { AppUpdates.refresh(applicationContext) }
+    }
     override fun onStop() {
         accounts.setForeground(false)
         // A rotation isn't a trip to the background.
