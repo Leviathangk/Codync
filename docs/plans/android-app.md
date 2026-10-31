@@ -54,6 +54,11 @@ included, is connected to that computer).
 
 ### Not verified (needs an account, a key, a device or the real Mac)
 
+Every row is ported. On 2026-11-01 the owner put off the remaining checks: OpenAI until a valid key is saved,
+Speech mode until a phone can speak into its microphone (no sound from the Mac), the physical-device rows until
+device acceptance, and the account flows on main (they were walked on dev, and main only lacks the
+`0004_android_devices` migration, applied by hand after the next `dev` → `main` merge).
+
 | What | Code | What it needs |
 | --- | --- | --- |
 | Push on a phone running the Play build, and the background Live update refresh | `PushService.kt`, `AppStoreNotifications.kt` | A phone with the official build; alert delivery through FCM is verified on the emulator |
