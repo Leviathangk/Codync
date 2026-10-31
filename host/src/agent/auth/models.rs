@@ -8,41 +8,35 @@ use crate::store::Store;
 use anyhow::{Context, Result, bail};
 use serde_json::{Value, json};
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex as StdMutex};
-use std::time::{Duration, Instant};
-use tokio::sync::Mutex;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+use tokio::sync::OnceCell;
 
-/// Model lists from the last minute, by agent: a settings screen asks for one from several places at once (the model
-/// picker, Approvals), and each would otherwise start the agent.
+/// Model lists being fetched, by agent: a settings screen asks for one from several places at once (the model
+/// picker, Approvals), and each would otherwise start the agent. An ask after one came fetches afresh.
 #[derive(Default)]
-pub struct Recent(StdMutex<HashMap<String, Slot>>);
+pub struct InFlight(Mutex<HashMap<String, Slot>>);
 
-/// One agent's list and when it came; locked while it's asked for.
-type Slot = Arc<Mutex<Option<(Instant, Value)>>>;
+/// One fetch's answer, for every ask that came while it ran (a failure as its text).
+type Slot = Arc<OnceCell<Result<Value, String>>>;
 
-impl Recent {
-    /// `fetch`'s list for `agent`, or the one fetched in the last minute; one in progress answers those that come
-    /// meanwhile. A failure is kept by no one.
+impl InFlight {
     async fn get(&self, agent: &str, fetch: impl Future<Output = Result<Value>>) -> Result<Value> {
         let slot = self.0.locked().entry(agent.to_owned()).or_default().clone();
-        let mut listed = slot.lock().await;
-        if let Some((at, catalog)) = listed.as_ref()
-            && at.elapsed() < Duration::from_mins(1)
-        {
-            return Ok(catalog.clone());
-        }
-        let result = fetch.await;
-        match &result {
-            Ok(catalog) => *listed = Some((Instant::now(), catalog.clone())),
-            Err(_) => drop(self.0.locked().remove(agent)),
-        }
-        result
+        let answer = slot
+            .get_or_init(|| async {
+                let answer = fetch.await.map_err(|e| format!("{e:#}"));
+                self.0.locked().remove(agent);
+                answer
+            })
+            .await;
+        answer.clone().map_err(anyhow::Error::msg)
     }
 }
 
-/// [`models`], shared with the asks of the last minute.
-pub async fn recent_models(hub: &Hub, backend: &str) -> Result<Value> {
-    hub.catalogs.get(backend, models(&hub.store, backend)).await
+/// [`models`], shared with the asks for the same agent meanwhile.
+pub async fn shared_models(hub: &Hub, backend: &str) -> Result<Value> {
+    hub.model_lists.get(backend, models(&hub.store, backend)).await
 }
 
 /// Discover the agent's advertised models in an isolated, prompt-free session.
@@ -71,6 +65,8 @@ pub async fn models(store: &Store, backend: &str) -> Result<Value> {
             Value::Null
         };
         let mut catalog = model_catalog(&session, &options);
+        catalog["modes"] =
+            crate::agent::modes::Modes::from_session(&session, backend).map_or(json!([]), |m| m.catalog());
         if backend != "cursor" {
             discover_options(&acp, &session, &mut catalog).await?;
         }
@@ -155,8 +151,7 @@ pub(crate) fn model_ids(session: &Value) -> Vec<String> {
     catalog["models"].as_array().into_iter().flatten().filter_map(|m| text(&m["id"])).collect()
 }
 
-/// `{models: [{id, name, description, options}], currentModelId, fastMode, modes: [{id, name, description}],
-/// currentModeId}` (modes: see `agent::modes`); `options` is
+/// `{models: [{id, name, description, options}], currentModelId, fastMode}`; `options` is
 /// Cursor's `cursor/list_available_models` answer (`Null` for other agents).
 fn model_catalog(session: &Value, options: &Value) -> Value {
     fn collect(options: &Value, out: &mut Vec<Value>) {
@@ -191,12 +186,9 @@ fn model_catalog(session: &Value, options: &Value) -> Value {
         let own = model_options(options, model["id"].as_str().unwrap_or_default());
         model["options"] = json!(if options.is_null() { initial_options.clone() } else { own });
     }
-    let agent_modes = crate::agent::modes::Modes::from_session(session)
-        .map_or_else(|| json!({"modes": [], "currentModeId": null}), |m| m.catalog());
     json!({"models": models, "currentModelId": current,
         "defaultModelOptions": true,
-        "fastMode": crate::agent::config::fast_mode_config(session).is_some(),
-        "modes": agent_modes["modes"], "currentModeId": agent_modes["currentModeId"]})
+        "fastMode": crate::agent::config::fast_mode_config(session).is_some()})
 }
 
 /// One model's options as `[{id, name, values: [{id, name}], default}]`, from Cursor's
@@ -237,8 +229,8 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn asks_at_once_start_the_agent_once_and_a_failure_is_asked_again() {
-        let recent = Recent::default();
+    async fn asks_at_once_start_the_agent_once_and_later_ones_again() {
+        let lists = InFlight::default();
         let started = std::sync::atomic::AtomicUsize::new(0);
         let fetch = |ok: bool| {
             let started = &started;
@@ -248,11 +240,11 @@ mod tests {
                 if ok { Ok(json!({"models": []})) } else { Err(anyhow::anyhow!("signed out")) }
             }
         };
-        let (a, b) = tokio::join!(recent.get("claude", fetch(true)), recent.get("claude", fetch(true)));
+        let (a, b) = tokio::join!(lists.get("claude", fetch(true)), lists.get("claude", fetch(true)));
         assert_eq!((a.unwrap(), b.unwrap()), (json!({"models": []}), json!({"models": []})));
         assert_eq!(started.load(std::sync::atomic::Ordering::SeqCst), 1);
-        assert!(recent.get("codex", fetch(false)).await.is_err());
-        assert!(recent.get("codex", fetch(true)).await.is_ok());
+        assert_eq!(lists.get("claude", fetch(false)).await.unwrap_err().to_string(), "signed out", "a refresh fetches");
+        assert!(lists.get("claude", fetch(true)).await.is_ok());
         assert_eq!(started.load(std::sync::atomic::Ordering::SeqCst), 3);
     }
 
@@ -325,8 +317,7 @@ mod tests {
         assert_eq!(result["models"][0]["description"], "Available here");
         assert_eq!(
             model_catalog(&json!({}), &Value::Null),
-            json!({"models": [], "currentModelId": null, "fastMode": false, "defaultModelOptions": true,
-                "modes": [], "currentModeId": null})
+            json!({"models": [], "currentModelId": null, "fastMode": false, "defaultModelOptions": true})
         );
     }
 

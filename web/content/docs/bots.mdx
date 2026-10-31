@@ -65,13 +65,13 @@ The **Permissions** setting decides how much the agent does on its own before it
 | --- | --- |
 | **Auto** (Claude Code), **Auto review** (Codex) | The agent decides what's safe and does it. It blocks risky actions or asks you about them on an approval card. New bots start here. |
 | The agent's other modes, such as **Manual**, **Accept edits** and **Plan** (Claude Code) or **Read-only** and **Full access** (Codex) | The agent works in that mode. Anything it asks about appears as an approval card in the chat, and your iPhone gets a "needs you" notification. The agent waits for your answer. |
-| **Ask me** | For an agent without modes: every request it makes appears as an approval card. |
+| **Ask me** | For an agent without modes, or a bot that keeps the agent's default mode: every request it makes appears as an approval card. |
 | **Approve automatically** | Codync allows each request for you, choosing the agent's "allow once" option when it offers one. |
 
 - **An agent without an Auto mode:** a new bot asks you about every request (**Ask me**).
 - **A model without Claude Code's Auto mode:** Claude Code works in **Accept edits** instead and says so in the chat.
 - **Another agent:** when you change the bot's agent, a mode you picked becomes the new agent's Auto mode.
-- **A mode the agent won't switch to:** the bot doesn't start the turn, and the chat says why.
+- **A mode the agent won't switch to, or doesn't have:** the bot doesn't start the turn, and the chat says why. A fallback agent without the bot's mode doesn't take over either; with **Auto**, each agent carries on in its own Auto mode.
 
 Bots made before Codync 2.34 keep the setting they had. With any setting, your agent's own settings still apply: if Claude Code's permission rules block a tool, it stays blocked. In the terminal UI this field is called **Approvals**, and ←/→ goes through the same choices.
 

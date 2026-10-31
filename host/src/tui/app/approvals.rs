@@ -1,33 +1,12 @@
 //! The bot form's Approvals: the agent's modes, its Auto mode first (`agent::modes`), then Codync approving
-//! everything. An agent without modes offers Ask me instead; one whose list hasn't come yet, Auto and Ask me.
+//! everything. An agent without modes offers Ask me instead; one whose list hasn't come yet, Auto and Ask me. A bot
+//! without a mode (or in Auto on an agent without one) shows as Ask me, and one in a mode the list lacks as that
+//! mode's id: never as more careful than it is.
 
 use super::{App, Form, cycle};
-use crate::agent::modes::AUTO;
-use serde_json::Value;
+use crate::agent::modes::{AUTO, Mode};
 
-/// The modes an agent's model list came with (`agentModels`).
-#[derive(Clone, Debug, Default)]
-pub struct AgentModes {
-    /// `(id, name)`, Auto first and listed as `auto`.
-    pub list: Vec<(String, String)>,
-    /// The mode its sessions start in.
-    pub current: Option<String>,
-}
-
-impl AgentModes {
-    pub fn parse(v: &Value) -> Self {
-        let list = v["modes"]
-            .as_array()
-            .into_iter()
-            .flatten()
-            .filter_map(|m| {
-                let id = m["id"].as_str()?;
-                Some((id.to_owned(), m["name"].as_str().unwrap_or(id).to_owned()))
-            })
-            .collect();
-        Self { list, current: v["currentModeId"].as_str().map(str::to_owned) }
-    }
-}
+const ASKS: &str = "Anything the agent still asks about comes to you as an approval card.";
 
 /// One Approvals choice: the mode to work in and whether Codync approves what still asks.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -35,52 +14,82 @@ pub struct Approval {
     pub mode: Option<String>,
     pub auto: bool,
     pub label: String,
+    /// The agent's own words for its mode, untranslated.
+    pub note: Option<String>,
+    /// What Codync does, to translate.
+    pub detail: &'static str,
 }
 
 impl Approval {
-    fn new(mode: Option<&str>, auto: bool, label: &str) -> Self {
-        Self { mode: mode.map(str::to_owned), auto, label: label.to_owned() }
+    fn new(mode: Option<&str>, auto: bool, label: &str, detail: &'static str) -> Self {
+        Self { mode: mode.map(str::to_owned), auto, label: label.to_owned(), note: None, detail }
+    }
+
+    fn ask() -> Self {
+        Self::new(None, false, "Ask me", "You'll get an approval card and a notification whenever the agent asks.")
     }
 }
 
-impl App {
-    /// What the form offers for `backend`.
-    pub fn approvals(&self, backend: &str) -> Vec<Approval> {
-        let ask = Approval::new(None, false, "Ask me");
-        let approve = Approval::new(None, true, "Approve automatically");
-        match self.modes.get(backend) {
-            None => vec![Approval::new(Some(AUTO), false, "Auto"), ask, approve],
-            Some(m) if m.list.is_empty() => vec![ask, approve],
-            Some(m) => m
-                .list
-                .iter()
-                .map(|(id, name)| Approval::new(Some(id), false, name))
-                .chain(std::iter::once(approve))
-                .collect(),
-        }
-    }
+/// The modes an agent's model list came with (`agentModels`), Auto first and listed as `auto`.
+pub fn parse_modes(v: &serde_json::Value) -> Vec<Mode> {
+    serde_json::from_value(v["modes"].clone()).unwrap_or_default()
+}
 
-    /// The choice the form's setting shows as: an unset mode is the one the agent starts in.
-    pub fn approval(&self, f: &Form) -> Approval {
-        let choices = self.approvals(&f.backend);
-        let current = self.modes.get(&f.backend).and_then(|m| m.current.as_deref());
-        let mode = f.mode.as_deref().or(current);
-        let pick = |c: &&Approval| {
-            if f.auto {
-                c.auto
-            } else {
-                !c.auto && (c.mode.as_deref() == mode || (c.mode.is_none() && f.mode.is_none()))
+impl App {
+    /// What the form offers for its agent, and which one its setting shows as.
+    pub fn approvals(&self, f: &Form) -> (Vec<Approval>, usize) {
+        let mut choices = match self.modes.get(&f.backend) {
+            None => vec![
+                Approval::new(Some(AUTO), false, "Auto", "The agent decides what's safe and asks you about the rest."),
+                Approval::ask(),
+            ],
+            Some(modes) if modes.is_empty() => vec![Approval::ask()],
+            Some(modes) => modes
+                .iter()
+                .map(|m| Approval { note: m.description.clone(), ..Approval::new(Some(&m.id), false, &m.name, ASKS) })
+                .collect(),
+        };
+        choices.push(Approval::new(
+            None,
+            true,
+            "Approve automatically",
+            "Tool requests are approved automatically. Your agent's own settings (like Claude Code's permission rules) still apply.",
+        ));
+        let position = |choices: &[Approval], mode: Option<&str>| {
+            choices.iter().position(|c| !c.auto && c.mode.as_deref() == mode)
+        };
+        // Unlisted: Auto on an agent without it is its default, like no mode (Ask me); any other mode is itself.
+        let unlisted = match f.mode.as_deref() {
+            Some(id) if id != AUTO => Approval::new(Some(id), false, id, ASKS),
+            _ => Approval::ask(),
+        };
+        let found = position(&choices, f.mode.as_deref()).or_else(|| position(&choices, unlisted.mode.as_deref()));
+        let selected = match found {
+            _ if f.auto => choices.len() - 1,
+            Some(i) => i,
+            None => {
+                choices.insert(choices.len() - 1, unlisted);
+                choices.len() - 2
             }
         };
-        let first = choices.iter().find(|c| !c.auto).cloned();
-        choices.iter().find(pick).cloned().or(first).unwrap_or_else(|| Approval::new(None, f.auto, "Ask me"))
+        (choices, selected)
+    }
+
+    /// The choice the form's setting shows as.
+    pub fn approval(&self, f: &Form) -> Approval {
+        let (mut choices, selected) = self.approvals(f);
+        choices.swap_remove(selected)
+    }
+
+    /// What a bot's mode is called on its agent, as far as the list that came says.
+    pub fn mode_name<'a>(&'a self, backend: &str, id: &'a str) -> &'a str {
+        let listed = self.modes.get(backend).and_then(|modes| modes.iter().find(|m| m.id == id));
+        listed.map_or(id, |m| m.name.as_str())
     }
 
     pub(super) fn cycle_approval(&self, f: &mut Form, d: isize) {
-        let choices = self.approvals(&f.backend);
-        let now = self.approval(f);
-        let i = choices.iter().position(|c| *c == now).unwrap_or(0);
-        let next = &choices[cycle(i, d, choices.len())];
+        let (choices, selected) = self.approvals(f);
+        let next = &choices[cycle(selected, d, choices.len())];
         (f.mode, f.auto) = (next.mode.clone(), next.auto);
     }
 }
@@ -89,7 +98,7 @@ impl App {
 mod tests {
     use super::super::{Overlay, test_app};
     use super::*;
-    use serde_json::json;
+    use serde_json::{Value, json};
 
     fn form(app: &mut App, bot: &Value) -> Form {
         app.bots.insert("b".into(), super::super::Bot::parse(bot).expect("a bot"));
@@ -99,26 +108,40 @@ mod tests {
         *f
     }
 
+    fn labels(app: &App, f: &Form) -> Vec<String> {
+        app.approvals(f).0.into_iter().map(|c| c.label).collect()
+    }
+
     #[tokio::test]
     async fn approvals_list_the_agents_modes_then_approve_automatically() {
         let mut app = test_app();
-        let codex = json!({"modes": [{"id": "auto", "name": "Auto review"}, {"id": "read-only", "name": "Read-only"}],
-            "currentModeId": "auto"});
-        app.modes.insert("codex".into(), AgentModes::parse(&codex));
+        let codex = json!({"modes": [{"id": "auto", "name": "Auto review", "description": "Only ask for unsafe actions"},
+            {"id": "read-only", "name": "Read-only"}]});
+        app.modes.insert("codex".into(), parse_modes(&codex));
         let mut f = form(&mut app, &json!({"id": "b", "backend": "codex", "permission": "ask", "mode": "auto"}));
-        assert_eq!(app.approval(&f).label, "Auto review");
-        let labels: Vec<String> = app.approvals("codex").into_iter().map(|c| c.label).collect();
-        assert_eq!(labels, ["Auto review", "Read-only", "Approve automatically"]);
+        let auto = app.approval(&f);
+        assert_eq!((auto.label.as_str(), auto.note.as_deref()), ("Auto review", Some("Only ask for unsafe actions")));
+        assert_eq!(labels(&app, &f), ["Auto review", "Read-only", "Approve automatically"]);
+        assert_eq!(app.mode_name("codex", "read-only"), "Read-only");
         app.cycle_approval(&mut f, 1);
         assert_eq!((f.mode.as_deref(), f.auto), (Some("read-only"), false));
         app.cycle_approval(&mut f, 1);
         assert_eq!((f.mode.as_deref(), f.auto), (None, true));
         assert_eq!(f.changes(), json!({"permission": "auto", "mode": null}));
 
-        // An agent without modes asks about everything; one whose list hasn't come yet offers Auto too.
-        app.modes.insert("gemini".into(), AgentModes::default());
-        let f = form(&mut app, &json!({"id": "b", "backend": "gemini", "permission": "ask", "mode": "auto"}));
+        // A bot without a mode is the agent's default, and one in a mode the list lacks shows it.
+        f.auto = false;
         assert_eq!(app.approval(&f).label, "Ask me");
-        assert_eq!(app.approvals("other").len(), 3);
+        f.mode = Some("bypassPermissions".into());
+        assert_eq!(labels(&app, &f), ["Auto review", "Read-only", "bypassPermissions", "Approve automatically"]);
+        assert_eq!(app.approval(&f).label, "bypassPermissions");
+
+        // An agent without modes asks about everything; one whose list hasn't come yet offers Auto too.
+        app.modes.insert("gemini".into(), vec![]);
+        let f = form(&mut app, &json!({"id": "b", "backend": "gemini", "permission": "ask", "mode": "auto"}));
+        assert_eq!(labels(&app, &f), ["Ask me", "Approve automatically"]);
+        assert_eq!(app.approval(&f).label, "Ask me");
+        let f = form(&mut app, &json!({"id": "b", "backend": "other", "permission": "ask", "mode": "plan"}));
+        assert_eq!(labels(&app, &f), ["Auto", "Ask me", "plan", "Approve automatically"]);
     }
 }

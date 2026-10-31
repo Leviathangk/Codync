@@ -110,7 +110,10 @@ class BotEditorTest {
         compose.onNodeWithContentDescription("Workspace").performClick()
         compose.onNodeWithText("Personal workspace").performClick()
         compose.onNodeWithText("This bot has its own space for files. It can work in other folders when you ask.").assertIsDisplayed()
-        compose.onNodeWithContentDescription("Permissions: Approve automatically").performScrollTo().performClick()
+        // A new bot works in the agent's Auto mode; while the agent's modes load, Auto, Ask me and Approve automatically.
+        compose.onNodeWithText("The agent decides what's safe and asks you about the rest.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithContentDescription("Permissions: Auto").performClick()
+        compose.onNodeWithText("Approve automatically").assertIsDisplayed()
         compose.onNodeWithText("Ask me").performClick()
         compose.onNodeWithText("You'll get an approval card and a notification whenever the agent asks.").assertIsDisplayed()
         toggle("Notifications").performScrollTo().assertIsOn().performClick().assertIsOff()
@@ -121,6 +124,19 @@ class BotEditorTest {
         compose.onNodeWithContentDescription("Workspace").performScrollTo().performClick()
         compose.onNodeWithText("Choose project folder…").performClick()
         compose.onNodeWithText("Choose workspace").assertIsDisplayed()
+    }
+
+    @Test fun permissionsListTheAgentsOwnModesWithTheirWords() {
+        val claude = AgentModels(emptyList(), modes = listOf(AgentMode("auto", "Auto", "Claude handles permission decisions"),
+            AgentMode("default", "Manual", "Always ask before making changes"), AgentMode("plan", "Plan")))
+        var draft by mutableStateOf(scout)
+        compose.setContent { Hosted { ApprovalRow(fixture(), { claude }, draft, { draft = it }) } }
+        compose.onNodeWithText("Claude handles permission decisions", substring = true).assertIsDisplayed()
+        compose.onNodeWithContentDescription("Permissions: Auto").performClick()
+        compose.onNodeWithText("Approve automatically").assertIsDisplayed()
+        compose.onNodeWithText("Manual").performClick()
+        compose.onNodeWithText("Always ask before making changes", substring = true).assertIsDisplayed()
+        assertEquals("ask" to "default", draft.permission to draft.mode)
     }
 
     @Test fun offlineSettingsDisableSavingButKeepTheModelEditable() {

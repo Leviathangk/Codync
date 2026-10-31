@@ -99,7 +99,7 @@ export function normalizeBot(raw: Partial<Bot> & { id: string }): Bot {
     command: raw.command ?? null,
     cwd: raw.cwd ?? '',
     managedWorkspace: raw.managedWorkspace ?? false,
-    permission: raw.permission ?? 'auto',
+    permission: raw.permission ?? 'ask',
     mode: raw.mode ?? null,
     model: raw.model ?? null,
     modelOptions: raw.modelOptions ?? {},

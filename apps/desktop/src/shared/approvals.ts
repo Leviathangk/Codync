@@ -13,7 +13,6 @@ export interface AgentMode {
 /** What an agent's model list says about its modes (`agentModels`); null while it loads. */
 export interface ModeCatalog {
   modes?: AgentMode[] | null
-  currentModeId?: string | null
 }
 
 /** A bot's Approvals choice. `note` is the agent's own words, untranslated; `detail` is Codync's, to translate. */
@@ -26,32 +25,36 @@ export interface ApprovalChoice {
 
 const ASK = 'ask'
 const APPROVE = 'approve'
+const ASKS = 'Anything the agent still asks about comes to you as an approval card.'
 const modeId = (mode: string) => `mode:${mode}`
+const ask: ApprovalChoice = { id: ASK, label: 'Ask me', note: null, detail: "You'll get an approval card and a notification whenever the agent asks." }
 
 /**
- * The agent's modes, its Auto mode first, then Codync approving everything. An agent without modes offers Ask me
- * instead; while its list loads (or from an older host), Auto and Ask me.
+ * The Approvals choices for a bot and the one its setting shows as: the agent's modes, its Auto mode first, then
+ * Codync approving everything. An agent without modes offers Ask me instead; while its list loads (or from an older
+ * host), Auto and Ask me. A bot without a mode (or in Auto on an agent without one) shows as Ask me, and one in a mode
+ * the list lacks as that mode's id: never as more careful than it is.
  */
-export function approvalChoices(catalog: ModeCatalog | null): ApprovalChoice[] {
-  const ask = { id: ASK, label: 'Ask me', note: null, detail: "You'll get an approval card and a notification whenever the agent asks." }
-  const approve = {
+export function approvals(draft: Pick<BotDraft, 'permission' | 'mode'>, catalog: ModeCatalog | null) {
+  const approve: ApprovalChoice = {
     id: APPROVE, label: 'Approve automatically', note: null,
     detail: "Tool requests are approved automatically. Your agent's own settings (like Claude Code's permission rules) still apply.",
   }
   const modes = catalog?.modes
-  if (!modes) {
-    return [{ id: modeId(AUTO_MODE), label: 'Auto', note: null, detail: "The agent decides what's safe and asks you about the rest." }, ask, approve]
+  const choices: ApprovalChoice[] = !modes
+    ? [{ id: modeId(AUTO_MODE), label: 'Auto', note: null, detail: "The agent decides what's safe and asks you about the rest." }, ask]
+    : !modes.length ? [ask] : modes.map((m) => ({ id: modeId(m.id), label: m.name, note: m.description ?? null, detail: ASKS }))
+  choices.push(approve)
+  const find = (id: string) => choices.find((c) => c.id === id)
+  const mode = draft.mode ?? null
+  // Unlisted: Auto on an agent without it is its default, like no mode; any other mode is itself.
+  const unlisted = mode && mode !== AUTO_MODE ? { id: modeId(mode), label: mode, note: null, detail: ASKS } : ask
+  let selected = draft.permission === 'auto' ? approve : find(mode ? modeId(mode) : ASK) ?? find(unlisted.id)
+  if (!selected) {
+    selected = unlisted
+    choices.splice(choices.length - 1, 0, selected)
   }
-  if (!modes.length) return [ask, approve]
-  const asks = 'Anything the agent still asks about comes to you as an approval card.'
-  return [...modes.map((m) => ({ id: modeId(m.id), label: m.name, note: m.description ?? null, detail: asks })), approve]
-}
-
-/** The choice a bot's setting shows as: an unset mode is the one the agent starts in. */
-export function selectedApproval(draft: Pick<BotDraft, 'permission' | 'mode'>, choices: ApprovalChoice[], catalog: ModeCatalog | null) {
-  if (draft.permission === 'auto') return choices.find((c) => c.id === APPROVE) ?? null
-  const mode = draft.mode ?? catalog?.currentModeId
-  return (mode ? choices.find((c) => c.id === modeId(mode)) : undefined) ?? choices.find((c) => c.id === ASK) ?? choices[0] ?? null
+  return { choices, selected }
 }
 
 /** The draft with an Approvals choice picked. */

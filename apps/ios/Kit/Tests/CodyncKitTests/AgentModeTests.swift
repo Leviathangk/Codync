@@ -14,15 +14,11 @@ private func catalog(_ json: String) throws -> AgentModels {
 }
 
 @Test func approvalsListTheAgentsModesThenApproveAutomatically() throws {
-    let codex = try catalog(#"{"models":[],"modes":[{"id":"auto","name":"Auto review","description":"Only ask for actions detected as potentially unsafe"},{"id":"read-only","name":"Read-only"}],"currentModeId":"auto"}"#)
-    let choices = ApprovalChoice.all(codex)
-    #expect(choices.map(\.label) == ["Auto review", "Read-only", "Approve automatically"])
-    #expect(choices.first?.note == "Only ask for actions detected as potentially unsafe")
-
+    let codex = try catalog(#"{"models":[],"modes":[{"id":"auto","name":"Auto review","description":"Only ask for actions detected as potentially unsafe"},{"id":"read-only","name":"Read-only"}]}"#)
     var draft = BotDraft(name: "Bot", backend: "codex")
-    #expect(ApprovalChoice.selected(permission: draft.permission, mode: draft.mode, in: choices, catalog: codex)?.label == "Auto review")
-    // An unset mode is the one the agent starts in.
-    #expect(ApprovalChoice.selected(permission: "ask", mode: nil, in: choices, catalog: codex)?.label == "Auto review")
+    let (choices, selected) = ApprovalChoice.choices(permission: draft.permission, mode: draft.mode, catalog: codex)
+    #expect(choices.map(\.label) == ["Auto review", "Read-only", "Approve automatically"])
+    #expect((selected.label, selected.note) == ("Auto review", "Only ask for actions detected as potentially unsafe"))
     draft.setApproval(choices[1].id)
     #expect((draft.permission, draft.mode) == ("ask", "read-only"))
     draft.setApproval(ApprovalChoice.approve)
@@ -31,15 +27,27 @@ private func catalog(_ json: String) throws -> AgentModels {
     draft.id = "b"
     let body = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(BotUpdate(draft: draft))) as? [String: Any])
     #expect(body["mode"] is NSNull)
-    #expect(ApprovalChoice.selected(permission: draft.permission, mode: draft.mode, in: choices, catalog: codex)?.label == "Approve automatically")
+    #expect(ApprovalChoice.choices(permission: draft.permission, mode: draft.mode, catalog: codex).selected.label == "Approve automatically")
+}
+
+@Test func aBotNeverShowsAsMoreCarefulThanItIs() throws {
+    let codex = try catalog(#"{"models":[],"modes":[{"id":"auto","name":"Auto review"},{"id":"read-only","name":"Read-only"}]}"#)
+    // Without a mode it works in the agent's default, and asks.
+    let unset = ApprovalChoice.choices(permission: "ask", mode: nil, catalog: codex)
+    #expect(unset.all.map(\.label) == ["Auto review", "Read-only", "Ask me", "Approve automatically"])
+    #expect(unset.selected.label == "Ask me")
+    // A mode the list lacks (or that hasn't loaded) shows as itself.
+    let bypass = ApprovalChoice.choices(permission: "ask", mode: "bypassPermissions", catalog: nil)
+    #expect(bypass.all.map(\.label) == ["Auto", "Ask me", "bypassPermissions", "Approve automatically"])
+    #expect(bypass.selected.label == "bypassPermissions")
 }
 
 @Test func anAgentWithoutAutoAsksAndOneStillLoadingOffersAuto() throws {
     let plain = try catalog(#"{"models":[],"modes":[]}"#)
-    let choices = ApprovalChoice.all(plain)
-    #expect(choices.map(\.label) == ["Ask me", "Approve automatically"])
-    #expect(ApprovalChoice.selected(permission: "ask", mode: "auto", in: choices, catalog: plain)?.label == "Ask me")
-    #expect(ApprovalChoice.all(nil).map(\.label) == ["Auto", "Ask me", "Approve automatically"])
+    let asks = ApprovalChoice.choices(permission: "ask", mode: "auto", catalog: plain)
+    #expect(asks.all.map(\.label) == ["Ask me", "Approve automatically"])
+    #expect(asks.selected.label == "Ask me")
+    #expect(ApprovalChoice.choices(permission: "ask", mode: "auto", catalog: nil).all.map(\.label) == ["Auto", "Ask me", "Approve automatically"])
 
     // Another agent's ids mean nothing: a picked mode becomes its Auto mode.
     var draft = BotDraft(name: "Bot")

@@ -12,7 +12,7 @@ pub(super) enum Listing {
     Session,
     /// The answer to our own Fast mode switch.
     Switch,
-    /// A `config_option_update`.
+    /// A `config_option_update`, or the answer to a mode switch.
     Update,
 }
 

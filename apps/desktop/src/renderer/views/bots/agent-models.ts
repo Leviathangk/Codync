@@ -21,8 +21,6 @@ export interface AgentModels {
   defaultModelOptions?: boolean
   /** The agent's modes, its Auto mode first and listed as `auto` (absent on older hosts). */
   modes?: AgentMode[]
-  /** The mode its sessions start in. */
-  currentModeId?: string | null
 }
 
 /** What the agent behind `backend` offers, loaded from the selected computer. */

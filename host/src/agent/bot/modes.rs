@@ -1,49 +1,66 @@
 //! Keeps each live session in the bot's mode (`BotConfig::mode`, see `agent::modes`): set once per session, and
-//! again after the user picks another. The agent may leave it during the session (Plan, once the plan is approved;
-//! Auto, on a model without it), and that stands until the next session. An agent without that mode keeps its own,
-//! and Codync asks about whatever it asks.
+//! again after the user picks another (none: the mode the session opened in). The agent may leave it during the
+//! session (Plan, once the plan is approved; Auto, on a model without it), and that stands until the next session.
+//! Asked for Auto, an agent without it keeps its own mode and Codync asks about whatever it asks; a mode the agent
+//! lacks or refuses fails the turn instead.
 
 use super::Actor;
-use crate::agent::modes::Modes;
-use anyhow::{Context, Result};
+use super::fast_mode::Listing;
+use crate::agent::modes::{Modes, Switch, switch};
+use anyhow::{Context, Result, bail};
 use serde_json::{Value, json};
 
 impl Actor {
-    /// Records the session's modes from an agent answer or a `config_option_update`.
+    /// Records the session's modes from an agent answer or a `config_option_update`; the one it opened in stays.
     pub(super) fn note_modes(&mut self, sid: &str, options: &Value) {
-        if let (Some(conn), Some(modes)) = (self.conn.as_mut(), Modes::from_session(options)) {
+        let Some(conn) = self.conn.as_mut() else { return };
+        if let Some(mut modes) = Modes::from_session(options, &self.cfg.backend) {
+            if let Some(known) = conn.modes.get(sid) {
+                modes.opening.clone_from(&known.opening);
+            }
             conn.modes.insert(sid.to_owned(), modes);
         }
     }
 
-    /// Switches a live session to the bot's mode before its turn, once per session. A switch the agent refuses
-    /// fails the turn: the bot never works in a mode the user didn't pick.
+    /// The session is in mode `id` now: a `current_mode_update`, or a switch the agent answered without its modes.
+    pub(super) fn note_current_mode(&mut self, sid: &str, id: Option<&str>) {
+        if let Some(modes) = self.conn.as_mut().and_then(|c| c.modes.get_mut(sid)) {
+            modes.current = id.map(str::to_owned);
+        }
+    }
+
+    /// Switches a live session to the bot's mode before its turn, once per session. A mode the agent lacks or
+    /// refuses fails the turn: the bot never works in a mode the user didn't pick.
     pub(super) async fn sync_mode(&mut self, sid: &str) -> Result<()> {
-        let Some(wanted) = self.cfg.mode.clone() else { return Ok(()) };
         let Some(conn) = self.conn.as_mut() else { return Ok(()) };
         if conn.mode_set.contains(sid) {
             return Ok(());
         }
-        let target = conn.modes.get(sid).map(|modes| {
-            let id = modes.resolve(&wanted).map(str::to_owned);
-            let current = id.is_some() && modes.current == id;
-            let name = modes.list.iter().find(|m| m["id"].as_str() == id.as_deref()).and_then(|m| m["name"].as_str());
-            (id, current, modes.config_id.clone(), name.map(str::to_owned))
-        });
-        let (Some(id), false, config, name) = target.unwrap_or_default() else {
-            // Already in it, or an agent without that mode (or without Auto): it keeps its own and asks as it does.
-            conn.mode_set.insert(sid.to_owned());
-            return Ok(());
+        let modes = conn.modes.get(sid);
+        let (mode, config) = match switch(modes, self.cfg.mode.as_deref()) {
+            Switch::Stay => {
+                conn.mode_set.insert(sid.to_owned());
+                return Ok(());
+            }
+            Switch::To(mode) => (mode.clone(), modes.and_then(|m| m.config_id.clone())),
+            Switch::Missing => bail!(
+                "{} doesn't have {}, the mode this bot works in, so this turn didn't start. Pick another under \
+                 Permissions (Auto carries over to every agent that has one).",
+                crate::agent::fallback::name(&self.cfg.backend),
+                self.cfg.mode.as_deref().unwrap_or_default()
+            ),
         };
         let (method, params) = match config {
-            Some(config) => ("session/set_config_option", json!({"sessionId": sid, "configId": config, "value": id})),
-            None => ("session/set_mode", json!({"sessionId": sid, "modeId": id})),
+            Some(config) => {
+                ("session/set_config_option", json!({"sessionId": sid, "configId": config, "value": mode.id}))
+            }
+            None => ("session/set_mode", json!({"sessionId": sid, "modeId": mode.id})),
         };
         let answer = self.session_request(method, params).await.with_context(|| {
-            let mode = name.unwrap_or_else(|| id.clone());
-            format!("Couldn't switch the agent to {mode}, the mode this bot works in, so this turn didn't start")
+            format!("Couldn't switch the agent to {}, the mode this bot works in, so this turn didn't start", mode.name)
         })?;
-        self.note_options(sid, &answer, super::fast_mode::Listing::Switch);
+        self.note_current_mode(sid, Some(&mode.id));
+        self.note_options(sid, &answer, Listing::Update);
         if let Some(conn) = self.conn.as_mut() {
             conn.mode_set.insert(sid.to_owned());
         }

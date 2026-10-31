@@ -116,7 +116,7 @@ extension Bot {
         command = try c.decodeIfPresent(String.self, forKey: .command)
         cwd = try c.decodeIfPresent(String.self, forKey: .cwd) ?? ""
         managedWorkspace = try c.decodeIfPresent(Bool.self, forKey: .managedWorkspace) ?? false
-        permission = try c.decodeIfPresent(String.self, forKey: .permission) ?? "auto"
+        permission = try c.decodeIfPresent(String.self, forKey: .permission) ?? "ask"
         mode = try c.decodeIfPresent(String.self, forKey: .mode)
         model = try c.decodeIfPresent(String.self, forKey: .model)
         modelOptions = try c.decodeIfPresent([String: String].self, forKey: .modelOptions) ?? [:]

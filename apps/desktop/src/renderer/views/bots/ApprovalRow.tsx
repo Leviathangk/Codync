@@ -1,4 +1,4 @@
-import { approvalChoices, selectedApproval, withApproval, type ModeCatalog } from '@shared/approvals'
+import { approvals, withApproval, type ModeCatalog } from '@shared/approvals'
 import type { BotDraft } from '@shared/models'
 import { ChoicePicker, ValueRow } from '../../components/Controls'
 import { useTr } from '../../lib/use-language'
@@ -10,13 +10,12 @@ export function ApprovalRow({ draft, catalog, onChange }: {
   onChange: (update: (d: BotDraft) => BotDraft) => void
 }) {
   const tr = useTr()
-  const choices = approvalChoices(catalog)
-  const selected = selectedApproval(draft, choices, catalog)
-  const detail = selected ? [selected.note, tr(selected.detail)].filter(Boolean).join(' ') : null
+  const { choices, selected } = approvals(draft, catalog)
+  const detail = [selected.note, tr(selected.detail)].filter(Boolean).join(' ')
   return (
     <ValueRow label="Permissions" detail={detail}>
       <ChoicePicker
-        selection={selected?.id ?? ''}
+        selection={selected.id}
         options={choices.map((c) => ({ id: c.id, label: c.label }))}
         onChange={(id) => onChange((d) => withApproval(d, id))}
       />

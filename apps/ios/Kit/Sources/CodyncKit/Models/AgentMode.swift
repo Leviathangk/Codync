@@ -16,6 +16,7 @@ public struct AgentMode: Decodable, Hashable, Sendable {
 public struct ApprovalChoice: Identifiable, Hashable, Sendable {
     public static let ask = "ask"
     public static let approve = "approve"
+    static let asks = "Anything the agent still asks about comes to you as an approval card."
 
     public let id: String
     public let label: String
@@ -24,29 +25,31 @@ public struct ApprovalChoice: Identifiable, Hashable, Sendable {
     /// What Codync does, to translate.
     public let detail: String
 
-    /// The choices for an agent, from its model list (nil while it loads).
-    public static func all(_ catalog: AgentModels?) -> [ApprovalChoice] {
-        let ask = ApprovalChoice(id: ask, label: "Ask me", note: nil,
-                                 detail: "You'll get an approval card and a notification whenever the agent asks.")
+    static let askMe = ApprovalChoice(id: ask, label: "Ask me", note: nil,
+                                      detail: "You'll get an approval card and a notification whenever the agent asks.")
+
+    /// The choices for a bot on an agent with this model list (nil while it loads), and the one its setting shows as.
+    /// A bot without a mode (or in Auto on an agent without one) shows as Ask me, and one in a mode the list lacks as
+    /// that mode's id: never as more careful than it is.
+    public static func choices(permission: String, mode: String?, catalog: AgentModels?) -> (all: [ApprovalChoice], selected: ApprovalChoice) {
         let approve = ApprovalChoice(id: approve, label: "Approve automatically", note: nil,
                                      detail: "Tool requests are approved automatically. Your agent's own settings (like Claude Code's permission rules) still apply.")
-        guard let modes = catalog?.modes else {
-            let auto = ApprovalChoice(id: modeId(AgentMode.auto), label: "Auto", note: nil,
-                                      detail: "The agent decides what's safe and asks you about the rest.")
-            return [auto, ask, approve]
+        var all: [ApprovalChoice]
+        if let modes = catalog?.modes {
+            all = modes.isEmpty ? [askMe] : modes.map { ApprovalChoice(id: modeId($0.id), label: $0.name, note: $0.description, detail: asks) }
+        } else {
+            all = [ApprovalChoice(id: modeId(AgentMode.auto), label: "Auto", note: nil,
+                                  detail: "The agent decides what's safe and asks you about the rest."), askMe]
         }
-        if modes.isEmpty { return [ask, approve] }
-        return modes.map {
-            ApprovalChoice(id: modeId($0.id), label: $0.name, note: $0.description,
-                           detail: "Anything the agent still asks about comes to you as an approval card.")
-        } + [approve]
-    }
-
-    /// The choice a bot's setting shows as: an unset mode is the one the agent starts in.
-    public static func selected(permission: String, mode: String?, in choices: [ApprovalChoice], catalog: AgentModels?) -> ApprovalChoice? {
-        if permission == "auto" { return choices.first { $0.id == approve } }
-        if let mode = mode ?? catalog?.currentModeId, let match = choices.first(where: { $0.id == modeId(mode) }) { return match }
-        return choices.first { $0.id == ask } ?? choices.first
+        all.append(approve)
+        if permission == "auto" { return (all, approve) }
+        // Unlisted: Auto on an agent without it is its default, like no mode; any other mode is itself.
+        let unlisted = mode.flatMap { $0 == AgentMode.auto ? nil : ApprovalChoice(id: modeId($0), label: $0, note: nil, detail: asks) } ?? askMe
+        if let found = all.first(where: { $0.id == mode.map(modeId) ?? ask }) ?? all.first(where: { $0.id == unlisted.id }) {
+            return (all, found)
+        }
+        all.insert(unlisted, at: all.count - 1)
+        return (all, unlisted)
     }
 
     static func modeId(_ mode: String) -> String { "mode:\(mode)" }

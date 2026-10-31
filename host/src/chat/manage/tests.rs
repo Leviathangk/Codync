@@ -50,6 +50,10 @@ async fn a_manager_creates_and_changes_bots_that_record_who_made_them() {
     // It manages the team like the bot that made it, and asks no less.
     assert_eq!((cfg.created_by.as_deref(), cfg.permission, cfg.manage_team), (Some("lead"), Permission::Auto, true));
     assert_eq!(cfg.mode.as_deref(), Some("plan"), "in the same mode");
+    // Another agent may not have that mode: no bot is made on it.
+    let other = json!({"name": "Reviewer", "agent": "codex"});
+    let refused = call(&hub, "lead", "create_bot", &other).await.unwrap_err().to_string();
+    assert!(refused.contains("plan mode, which Codex may not have"), "{refused}");
     // And reaches only the connectors and skills it does, not every installed one.
     assert_eq!((cfg.connectors, cfg.skills), (vec!["github".to_owned()], vec![]));
     assert_eq!(made["routines"][0]["triggerDescriptions"][0], "Every 30 minutes");
@@ -99,7 +103,7 @@ async fn a_manager_creates_and_changes_bots_that_record_who_made_them() {
     assert!(refused("lead", "update_bot", own).await.contains("turned off setting your own fallbacks"));
     // Under Ask, a change too long for its card to show in full never reaches the card.
     hub.update_bot(&json!({"id": "lead", "permission": "ask"})).unwrap();
-    let long = json!({"name": "x", "instructions": "a".repeat(MAX_INSTRUCTIONS_CHARS)});
+    let long = json!({"name": "x", "agent": "claude", "instructions": "a".repeat(MAX_INSTRUCTIONS_CHARS)});
     assert!(refused("lead", "create_bot", long).await.contains("too long for its approval card"));
     assert_eq!(hub.store.bots().unwrap().len(), 3, "a refused change creates nothing");
     assert_eq!(hub.routines.list("dev")["routines"], json!([]));

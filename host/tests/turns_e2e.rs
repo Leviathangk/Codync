@@ -330,8 +330,31 @@ async fn a_new_bot_works_in_its_agents_auto_mode_until_the_user_picks_another() 
     host.call("updateBot", json!({"id": bot, "mode": "read-only"})).await;
     host.call("send", json!({"botId": bot, "text": "three"})).await;
     host.wait_for(&bot, Duration::from_mins(1), speed_reply("mode read-only ", "three")).await;
+    // Left again (planless); without a mode of its own, the bot goes back to the one its session opened in.
+    host.call("updateBot", json!({"id": bot, "permission": "ask", "mode": null})).await;
+    host.call("send", json!({"botId": bot, "text": "four"})).await;
+    host.wait_for(&bot, Duration::from_mins(1), speed_reply("mode read-only ", "four")).await;
     let log = log();
     assert!(!log.contains("session/load"), "{log}");
+    assert_eq!(log.matches(r#""value": "read-only""#).count(), 2, "{log}");
+}
+
+#[tokio::test]
+async fn a_mode_switch_leaves_fast_mode_to_its_own() {
+    if python_missing() {
+        return;
+    }
+    let host = Host::start().await;
+    let bot = host.bot("Both", "tests/fixtures/fast_mode_agent.py").await;
+    let folder = host.home.join("Both");
+    std::fs::write(folder.join("moded"), "").unwrap();
+    host.call("updateBot", json!({"id": bot, "fastMode": true, "mode": "auto"})).await;
+    host.call("send", json!({"botId": bot, "text": "one"})).await;
+    host.wait_for(&bot, Duration::from_mins(1), speed_reply("fast on", "one")).await;
+    let sync = common::snapshot(&host.base, &host.token).await;
+    assert_eq!(common::bot(&sync, &bot)["fastModeSupport"], "offered", "the mode switch's answer isn't a refusal");
+    let log = std::fs::read_to_string(folder.join("calls.jsonl")).unwrap();
+    assert!(log.contains(r#""configId": "mode", "value": "agent""#) && log.contains(FAST_ON), "{log}");
 }
 
 #[tokio::test]

@@ -29,9 +29,8 @@ import kotlinx.coroutines.CancellationException
         // The model picker says why; Auto, Ask me and Approve automatically stay on offer meanwhile.
         catch (error: Exception) { Log.i("Codync", "no agent modes for ${draft.backend}: ${error.message}") }
     }
-    val choices = ApprovalChoice.all(catalog)
-    val selected = ApprovalChoice.selected(draft, choices, catalog)
-    ValueRow("Permissions", detail = selected?.let { listOfNotNull(it.note, tr(it.detail)).joinToString(" ") }) {
-        ChoicePicker(selected?.id.orEmpty(), choices.map { it.id to it.label }, { change(draft.withApproval(it)) }, label = "Permissions")
+    val (choices, selected) = ApprovalChoice.choices(draft, catalog)
+    ValueRow("Permissions", detail = listOfNotNull(selected.note, tr(selected.detail)).joinToString(" ")) {
+        ChoicePicker(selected.id, choices.map { it.id to it.label }, { change(draft.withApproval(it)) }, label = "Permissions")
     }
 }

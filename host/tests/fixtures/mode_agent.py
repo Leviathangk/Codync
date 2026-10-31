@@ -2,7 +2,7 @@
 `mode` config option that starts on Read-only. It logs session calls to calls.jsonl in its folder and answers each
 prompt with its mode and the prompt text. With a `planless` file in its folder, a prompt moves the session to
 Full access by itself (the way Claude leaves Plan once the plan is approved); with a `stuck` file it refuses
-every mode switch."""
+every mode switch; with a `limit` file every prompt fails the way Claude's adapter reports a usage limit."""
 
 import json
 import os
@@ -48,6 +48,9 @@ for line in sys.stdin:
         log({"method": method, "configId": params["configId"], "value": params["value"]})
         mode = params["value"]
         send({"id": rid, "result": options()})
+    elif method == "session/prompt" and os.path.exists("limit"):
+        limit = {"code": -32603, "message": "Internal error: You've hit your limit", "data": {"errorKind": "rate_limit"}}
+        send({"id": rid, "error": limit})
     elif method == "session/prompt":
         text = " ".join(b.get("text", "") for b in params.get("prompt", []))
         update = {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": f"mode {mode} · {text}"}}

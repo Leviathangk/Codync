@@ -20,7 +20,7 @@ mod slash;
 mod steps;
 mod ui;
 
-pub use approvals::AgentModes;
+pub use approvals::parse_modes;
 pub use bot::{AgentModel, Bot, ModelOption, OwnMemory};
 pub use editor::Editor;
 pub use exchange::{ConversationRow, Exchange, Item, Outcome, conversation, group, rows};
@@ -129,7 +129,7 @@ pub struct App {
     /// Agents whose model list came with Fast mode.
     pub fast_mode: HashSet<String>,
     /// The modes each agent's model list came with.
-    pub modes: HashMap<String, AgentModes>,
+    pub modes: HashMap<String, Vec<crate::agent::modes::Mode>>,
     /// A setup terminal holding the screen.
     pub shell: Option<Shell>,
     /// Chats marked read since their bot's unread count last changed.

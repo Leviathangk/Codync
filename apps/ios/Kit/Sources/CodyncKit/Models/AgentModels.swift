@@ -35,6 +35,4 @@ public struct AgentModels: Decodable, Sendable {
     public let defaultModelOptions: Bool?
     /// The agent's modes, its Auto mode first and listed as `auto` (nil from older hosts).
     public let modes: [AgentMode]?
-    /// The mode its sessions start in.
-    public let currentModeId: String?
 }
