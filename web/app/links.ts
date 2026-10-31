@@ -6,6 +6,8 @@ export const WINDOWS = "/download/windows";
 export const APP_STORE = "https://apps.apple.com/app/codync/id6760984418";
 export const GITHUB = "https://github.com/leepokai/Codync";
 export const DISCORD = "https://discord.gg/KBAX3Qznxh";
+export const WECHAT = "/wechat";
+export const WECHAT_QR = "/wechat-group.png";
 // Donation page.
 export const KO_FI = "https://ko-fi.com/leepokai";
 export const EMAIL = "kevin@codync.dev";
