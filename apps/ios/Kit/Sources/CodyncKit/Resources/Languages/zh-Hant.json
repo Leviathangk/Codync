@@ -530,6 +530,8 @@
   "Workspace": "工作區",
   "Permissions": "許可權",
   "Ask me": "每次詢問",
+  "The agent decides what's safe and asks you about the rest.": "Agent 自己判斷哪些安全，其餘的再問你。",
+  "Anything the agent still asks about comes to you as an approval card.": "Agent 仍要請求的事，會以批准卡片送到你這裡。",
   "Approve automatically": "自動批准",
   "Activity": "活動",
   "Get notified when this bot finishes or needs you": "這個 Bot 做完或需要你時通知你",

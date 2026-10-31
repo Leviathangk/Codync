@@ -57,18 +57,25 @@ Changing the folder starts a new agent session.
 
 When there are no recent workspaces, **Browse other folders** appears first. After you choose a folder, recent workspaces and their search appear on your next visit.
 
-## Permissions: Ask me or Approve automatically
+## Permissions
 
-The **Permissions** setting decides what happens when the agent asks to run a command, change files or use another tool.
+The **Permissions** setting decides how much the agent does on its own before it asks you. It lists the modes the bot's agent offers, its Auto mode first, then **Approve automatically**.
 
 | Setting | What happens |
 | --- | --- |
-| **Ask me** | An approval card appears in the chat and your iPhone gets a "needs you" notification. The agent waits for your answer. |
+| **Auto** (Claude Code), **Auto review** (Codex) | The agent decides what's safe and does it. It blocks risky actions or asks you about them on an approval card. New bots start here. |
+| The agent's other modes, such as **Manual**, **Accept edits** and **Plan** (Claude Code) or **Read-only** and **Full access** (Codex) | The agent works in that mode. Anything it asks about appears as an approval card in the chat, and your iPhone gets a "needs you" notification. The agent waits for your answer. |
+| **Ask me** | For an agent without modes: every request it makes appears as an approval card. |
 | **Approve automatically** | Codync allows each request for you, choosing the agent's "allow once" option when it offers one. |
 
-New bots start on **Approve automatically**. With either setting, your agent's own settings still apply: if Claude Code's permission rules block a tool, it stays blocked. In the terminal UI this field is called **Approvals** (Ask or Auto).
+- **An agent without an Auto mode:** a new bot asks you about every request (**Ask me**).
+- **A model without Claude Code's Auto mode:** Claude Code works in **Accept edits** instead and says so in the chat.
+- **Another agent:** when you change the bot's agent, a mode you picked becomes the new agent's Auto mode.
+- **A mode the agent won't switch to:** the bot doesn't start the turn, and the chat says why.
 
-The same setting covers changes a bot makes to other bots with **Manage the team**: under Ask me, each change waits for your Allow.
+Bots made before Codync 2.34 keep the setting they had. With any setting, your agent's own settings still apply: if Claude Code's permission rules block a tool, it stays blocked. In the terminal UI this field is called **Approvals**, and ←/→ goes through the same choices.
+
+The same setting covers changes a bot makes to other bots with **Manage the team**: unless it's Approve automatically, each change waits for your Allow. The bots it creates get the same setting.
 
 How approval cards work: [Conversations](/docs/conversations#approval-cards).
 

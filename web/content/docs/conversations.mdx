@@ -58,7 +58,7 @@ A report or a tracker you'll come back to can come as an [artifact](/docs/artifa
 
 ## Approval cards
 
-When a bot's **Permissions** setting is **Ask me** and its agent wants to run a command, change files or use another tool, an approval card appears in the chat. It says what the agent wants ("Wants to run a command", "Wants to change files"…), the computer and folder it runs in, and **Details** with the command or the diff.
+When a bot's agent asks to run a command, change files or use another tool, an approval card appears in the chat, unless the bot's **Permissions** are **Approve automatically**. In the agent's Auto mode it asks only about what it won't decide on its own. It says what the agent wants ("Wants to run a command", "Wants to change files"…), the computer and folder it runs in, and **Details** with the command or the diff.
 
 The answers come from the agent, usually:
 
@@ -73,7 +73,7 @@ In the terminal UI, press `y` to allow once, `a` to always allow, `n` to reject,
 
 The agent waits for your answer. If the turn ends before you answer, for example because you stopped it, the card reads **Expired — the agent moved on**.
 
-With **Approve automatically**, no cards appear: Codync allows each request for you. Your agent's own permission rules still apply under either setting. To change the setting, see [Bots](/docs/bots#permissions-ask-me-or-approve-automatically).
+With **Approve automatically**, no cards appear: Codync allows each request for you. Your agent's own permission rules still apply under any setting. To change the setting, see [Bots](/docs/bots#permissions).
 
 ## Stopping a turn
 

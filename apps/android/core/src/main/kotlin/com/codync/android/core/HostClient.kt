@@ -21,6 +21,8 @@ data class Bot(
     val cwd: String = "",
     val managedWorkspace: Boolean = false,
     val permission: String = "ask",
+    /** The agent mode it works in ([AgentMode]); null for the agent's default. */
+    val mode: String? = null,
     val model: String? = null,
     /** The model's own settings (effort, fast…): agent option id → value. */
     val modelOptions: Map<String, String> = emptyMap(),

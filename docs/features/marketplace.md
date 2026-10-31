@@ -104,7 +104,7 @@ See [file structure](../architecture/file-structure.md), [bot collaboration](bot
 
 ## Model selection
 
-The shared bot editor requests `agentModels {backend}` from the selected computer. The host starts an isolated ACP session under its probe directory with saved agent credentials, no MCP servers and no prompt, then closes the process. The response is `{models: [{id, name, description, options, optionsError?}], currentModelId, fastMode, defaultModelOptions}`.
+The shared bot editor requests `agentModels {backend}` from the selected computer. The host starts an isolated ACP session under its probe directory with saved agent credentials, no MCP servers and no prompt, then closes the process. The response is `{models: [{id, name, description, options, optionsError?}], currentModelId, fastMode, defaultModelOptions, modes, currentModeId}` (modes: see Agent modes). The host keeps each agent's answer for a minute and hands one in progress to the asks that come meanwhile (`auth::Recent`): an editor asks from the model picker and Permissions at once, and each ask would otherwise start the agent.
 
 Discovery prefers ACP `configOptions` with category `model` (including grouped options), with conventional `model`/`models` IDs as a compatibility fallback. Older agents may expose `models.availableModels`. Model names and IDs come from the agent; Codync does not bundle a provider catalog. See the [ACP config option contract](https://agentclientprotocol.com/protocol/v1/session-config-options).
 
@@ -135,6 +135,14 @@ Clients show Fast mode for an agent bot unless its runtime says `unsupported` (a
 
 - Composer: the `/fast` [command](#commands), not a button. The terminal UI also shows `⚡ fast` or `⚡ refused` in the chat header.
 - Bot settings: a Fast mode switch row under Model when the agent's model list offers it (never for a custom command), when the bot's own sessions do, or while it's on. While refused, its detail gives the reason. The terminal UI form always lists the field and notes when the agent doesn't offer it.
+
+## Agent modes
+
+Agents list how they ask before acting as session modes: a `configOptions` entry with category `mode`, or the older `modes` field (`agent/modes.rs`). Claude's adapter offers Manual (`default`), Accept edits, Plan, Auto and, where allowed, Bypass permissions; Codex's offers Read-only, Workspace access, Auto review (`agent`) and Full access. ACP itself has no classifier: Claude's Auto is Claude Code's auto mode, Codex's Auto review its guardian reviewer.
+
+A bot's `mode` names the one it works in: the agent's own id, or `auto` for the agent's Auto mode whatever its id (`auto`, or the one named "Auto review"), so the choice carries over to another agent or a fallback. Unset keeps the agent's default. `agentModels` lists the modes as `{modes: [{id, name, description}], currentModeId}`, the Auto mode first and under `auto`. Clients show them as the Permissions choices, then Approve automatically; an agent without modes shows Ask me instead, and one whose list hasn't loaded shows Auto, Ask me and Approve automatically (`ApprovalChoice` on iOS and Android, `shared/approvals.ts` on the desktop, `tui/app/approvals.rs`). `permission` stays what Codync does with a request that still reaches it: `ask` (a card) or `auto` (approve).
+
+New bots get `permission: ask` and `mode: auto` (`new_bot::with_defaults`, when the client picks neither), the lead and imported bots included; a bot a manager creates gets the manager's. Bots made before keep theirs. The actor sets the mode once per session, before its first turn and again after the user picks another (`agent/bot/modes.rs`), with `session/set_config_option` or `session/set_mode`. The agent may leave it during the session (Claude leaves Plan once the plan is approved, and turns Auto into Accept edits on a model without it, with a notice of its own), and that stands until the next session. A switch the agent refuses fails the turn, so a bot never works in a mode the user didn't pick. An agent that doesn't offer the mode keeps its default, and Codync asks about whatever it asks.
 
 ## Secure connection setup
 

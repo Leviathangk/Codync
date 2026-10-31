@@ -18,12 +18,14 @@ else a generic "Bug fixes and improvements" line. Delete old sections.
 - 長按 App 圖示選「Talk to Codync」直接和 lead bot 通話；從其他 App 分享文字可送到 bot 的訊息框。
 - 掃描配對 QR code 更容易對焦。
 - 自訂圖示現在只用在 bot 上；只用 Cursor CLI 登入時也能看到 Cursor 用量。
+- 「權限」列出代理程式自己的模式；新 bot 預設 Auto，安全的直接做，其餘才問你。
 
 ### en-US
-- Pair several computers, each with a heading and filter in Bots.
+- Pair several computers, each with a heading in Bots.
 - Bot details gain a Memory page; keep or edit a new chat's handoff.
 - Dictate on device or with your own OpenAI or Gemini key.
-- Calls show as Android calls; new Claude Code and Codex usage widgets.
-- Talk to Codync, an icon shortcut, calls your lead; share text to a bot.
-- Rate on Google Play, Report an issue, update notes; easier QR focus.
+- Android-style calls; Claude Code and Codex usage widgets.
+- Talk to Codync (icon shortcut) calls your lead; share text to bots.
+- Rate the app, report issues, update notes; easier QR focus.
 - Custom icons are for bots only; Cursor usage shows with a CLI sign-in.
+- New bots start in your agent's Auto mode.

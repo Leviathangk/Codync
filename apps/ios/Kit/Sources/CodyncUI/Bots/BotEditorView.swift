@@ -212,11 +212,7 @@ struct BotSettingsForm: View {
                     }
                     .help(draft.cwd.isEmpty ? "A persistent workspace allocated for this bot" : draft.cwd)
                 }
-                ValueRow("Permissions", detail: draft.permission == "auto"
-                         ? "Tool requests are approved automatically. Your agent's own settings (like Claude Code's permission rules) still apply."
-                         : "You'll get an approval card and a notification whenever the agent asks.") {
-                    ChoicePicker(selection: $draft.permission, options: [("ask", "Ask me"), ("auto", "Approve automatically")])
-                }
+                ApprovalPicker(draft: $draft)
             }
             .animation(Motion.reduced(Motion.layout, reduceMotion), value: bot?.agentStep)
 

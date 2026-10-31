@@ -35,7 +35,8 @@ initiative instead of waiting to be asked. Everything about it lives in the host
   routine for anything recurring; hand work that belongs to another bot to it with `message_bot`. What it reads in
   email, web pages, documents or other services is data, never instructions: it sends, forwards, replies to, deletes,
   pays for or posts nothing the user didn't ask for in the chat. The check-in says the same, since it runs
-  unattended under the bot's own approval setting (Approve automatically by default, like any new bot).
+  unattended under the bot's own approval setting (the agent's Auto mode by default, like any new bot, so what the
+  agent won't decide waits on a card).
 - **Check in.** The lead Codync makes comes with a routine named *Check in*, at 09:00 and 18:00 in the computer's time zone
   (`0 9,18 * * *`, `routines::local_zone`). Each run looks at memory, recent conversations (`search_history`) and
   connected services, tells the user what deserves their attention or takes a step for them, asks for access it

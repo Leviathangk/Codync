@@ -530,6 +530,8 @@
   "Workspace": "Espace de travail",
   "Permissions": "Autorisations",
   "Ask me": "Me demander",
+  "The agent decides what's safe and asks you about the rest.": "L’agent décide de ce qui est sûr et vous demande pour le reste.",
+  "Anything the agent still asks about comes to you as an approval card.": "Ce que l’agent demande encore vous arrive sous forme de carte d’approbation.",
   "Approve automatically": "Approuver automatiquement",
   "Activity": "Activité",
   "Get notified when this bot finishes or needs you": "Être averti lorsque ce bot termine ou a besoin de vous",

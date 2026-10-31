@@ -530,6 +530,8 @@
   "Workspace": "작업 공간",
   "Permissions": "권한",
   "Ask me": "매번 확인",
+  "The agent decides what's safe and asks you about the rest.": "에이전트가 안전한 작업은 스스로 판단하고, 나머지는 물어봅니다.",
+  "Anything the agent still asks about comes to you as an approval card.": "에이전트가 여전히 요청하는 작업은 승인 카드로 전달됩니다.",
   "Approve automatically": "자동 승인",
   "Activity": "활동",
   "Get notified when this bot finishes or needs you": "이 봇이 작업을 마치거나 도움이 필요할 때 알림 받기",

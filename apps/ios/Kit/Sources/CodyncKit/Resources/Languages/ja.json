@@ -530,6 +530,8 @@
   "Workspace": "ワークスペース",
   "Permissions": "権限",
   "Ask me": "毎回確認",
+  "The agent decides what's safe and asks you about the rest.": "安全な操作はエージェントが判断し、それ以外はあなたに確認します。",
+  "Anything the agent still asks about comes to you as an approval card.": "それでもエージェントが要求する操作は、承認カードとして届きます。",
   "Approve automatically": "自動的に承認",
   "Activity": "活動",
   "Get notified when this bot finishes or needs you": "このボットが終了したとき、またはあなたが必要になったときに通知を受け取ります",
