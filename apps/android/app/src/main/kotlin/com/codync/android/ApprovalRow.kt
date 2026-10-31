@@ -18,11 +18,13 @@ import com.codync.android.design.tr
 import kotlinx.coroutines.CancellationException
 
 /** Permissions: the modes the bot's agent offers (its model list), its Auto mode first, then approving everything. */
-@Composable internal fun ApprovalRow(state: AppState, load: suspend (String) -> AgentModels, draft: BotDraft, change: (BotDraft) -> Unit) {
+@Composable internal fun ApprovalRow(state: AppState, load: suspend (String) -> AgentModels, draft: BotDraft, change: (BotDraft) -> Unit,
+    reload: Int = 0) {
     val online = state.actualConnection is LinkState.Ready
     var catalog by remember(draft.backend) { mutableStateOf<AgentModels?>(null) }
     // The host shares one model list asked for from several places at once (the model picker, here).
-    LaunchedEffect(state.computer.id, draft.backend, online) {
+    // [reload]: the model picker's Retry, so a list that failed the first time fills both.
+    LaunchedEffect(state.computer.id, draft.backend, online, reload) {
         if (draft.backend == "custom" || !online) return@LaunchedEffect
         try { catalog = load(draft.backend) }
         catch (cancelled: CancellationException) { throw cancelled }

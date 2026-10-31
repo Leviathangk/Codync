@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -44,6 +45,8 @@ internal enum class FormPart { All, Often, Rarely }
     var pickingAvatar by remember { mutableStateOf(false) }
     var viewingSkill by remember { mutableStateOf<SkillRef?>(null) }
     var addingFallback by remember { mutableStateOf(false) }
+    // Retry model list reloads Permissions too: its modes come from the same list.
+    var modelReload by remember { mutableIntStateOf(0) }
     val online = state.actualConnection is LinkState.Ready
     val bot = state.bots.firstOrNull { it.id == draft.id }
     LaunchedEffect(online) { if (online) store.refreshPlugins() }
@@ -56,7 +59,7 @@ internal enum class FormPart { All, Often, Rarely }
                 }
                 CardSection("Agent") {
                     fallbackBanner(state, store, bot); computerRow(state, online)
-                    agentRows(state, store, draft, change, bot) { addingFallback = true }; placeRows(state, store, draft, change) { folders = true }
+                    agentRows(state, store, draft, change, bot, modelReload, reloadModels = { modelReload++ }) { addingFallback = true }; placeRows(state, store, draft, change, modelReload) { folders = true }
                 }
                 CardSection("Activity") {
                     notifyRow(draft, change); computerUseRow(state, draft, change); manageTeamRow(state, draft, change); reachRows(state, draft, change)
@@ -67,7 +70,7 @@ internal enum class FormPart { All, Often, Rarely }
                 CardSection("Instructions") { instructionsRow(draft, change) }
                 CardSection("Agent") {
                     fallbackBanner(state, store, bot)
-                    agentRows(state, store, draft, change, bot) { addingFallback = true }
+                    agentRows(state, store, draft, change, bot, modelReload, reloadModels = { modelReload++ }) { addingFallback = true }
                     if (!online) row { OfflineNote() }
                 }
             }
@@ -77,7 +80,7 @@ internal enum class FormPart { All, Often, Rarely }
                     nameRow(draft, change); createdByRow(state, bot)
                 }
                 // The agent and its model are on the Details page; what's left is where it works.
-                CardSection("Workspace") { computerRow(state, online); placeRows(state, store, draft, change) { folders = true } }
+                CardSection("Workspace") { computerRow(state, online); placeRows(state, store, draft, change, modelReload) { folders = true } }
                 CardSection("Activity") { notifyRow(draft, change); manageTeamRow(state, draft, change); reachRows(state, draft, change) }
                 Plugins(state, draft, change) { viewingSkill = it }
             }
@@ -147,12 +150,13 @@ private fun CardRows.computerRow(state: AppState, online: Boolean) = row {
 }
 
 /** The agent, its model and the fallbacks that carry on for it. */
-private fun CardRows.agentRows(state: AppState, store: AppStore, draft: BotDraft, change: (BotDraft) -> Unit, bot: Bot?, addFallback: () -> Unit) {
+private fun CardRows.agentRows(state: AppState, store: AppStore, draft: BotDraft, change: (BotDraft) -> Unit, bot: Bot?, modelReload: Int,
+    reloadModels: () -> Unit, addFallback: () -> Unit) {
     row {
         AgentModelPicker(state, store::agentModels, draft.backend, draft.model, draft.modelOptions, draft.fastMode ?: false, bot,
             { model, options -> change(draft.copy(model = model, modelOptions = options)) }, { change(draft.copy(fastMode = it)) },
             agents = agentChoices(state) + ("custom" to "Custom command"),
-            chooseAgent = { if (it != draft.backend) change(draft.withAgent(it)) }) {
+            chooseAgent = { if (it != draft.backend) change(draft.withAgent(it)) }, onReload = reloadModels) {
                 bot?.restOf(draft.backend)?.let { Text(it.line(RelativeTime.clock(it.until)), style = Type.caption, color = Palette.secondary) }
                 backends(state).firstOrNull { it.text("id") == draft.backend && !it.available }?.text("installHint")?.takeIf(String::isNotBlank)?.let {
                     Text(it, style = Type.caption, color = Palette.warning)
@@ -171,7 +175,8 @@ private fun CardRows.agentRows(state: AppState, store: AppStore, draft: BotDraft
 }
 
 /** Where the bot works and what it may do there without asking. */
-private fun CardRows.placeRows(state: AppState, store: AppStore, draft: BotDraft, change: (BotDraft) -> Unit, chooseFolder: () -> Unit) {
+private fun CardRows.placeRows(state: AppState, store: AppStore, draft: BotDraft, change: (BotDraft) -> Unit, modelReload: Int,
+    chooseFolder: () -> Unit) {
     row {
         ValueRow("Workspace", detail = if (draft.cwd.isEmpty()) "This bot has its own space for files. It can work in other folders when you ask."
             else "This project is the default starting folder. The bot can work elsewhere when you ask.") {
@@ -188,7 +193,7 @@ private fun CardRows.placeRows(state: AppState, store: AppStore, draft: BotDraft
             }
         }
     }
-    row { ApprovalRow(state, store::agentModels, draft, change) }
+    row { ApprovalRow(state, store::agentModels, draft, change, modelReload) }
 }
 
 private fun CardRows.notifyRow(draft: BotDraft, change: (BotDraft) -> Unit) =
