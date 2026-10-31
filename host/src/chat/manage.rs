@@ -37,13 +37,14 @@ standing instructions: it doesn't share your conversation. The user may approve 
 when they deny one, don't retry it unasked. Deleting bots is the user's.";
 
 /// The setup a manager sets, by wire name, with its label on approval cards and notices.
-const FIELDS: [(&str, &str); 11] = [
+const FIELDS: [(&str, &str); 12] = [
     ("name", "Name"),
     ("backend", "Agent"),
     ("model", "Model"),
     ("fallbacks", "Fallbacks"),
     ("cwd", "Folder"),
     ("permission", "Approvals"),
+    ("mode", "Mode"),
     ("manageTeam", "Manage the team"),
     ("avatarColor", "Color"),
     ("avatarShape", "Shape"),
@@ -144,6 +145,7 @@ async fn create(hub: &Arc<Hub>, source: &BotConfig, args: &Value) -> Result<Valu
     // A bot's bots act as freely as it does, no more: they manage the team too, under Ask they ask, and they reach
     // only the connectors and skills it does.
     fields.insert("permission".into(), json!(source.permission));
+    fields.insert("mode".into(), json!(source.mode));
     fields.insert("manageTeam".into(), true.into());
     let mut body = Value::Object(fields.clone());
     body["connectors"] = json!(source.connectors);
@@ -231,7 +233,7 @@ fn setup(hub: &Hub, cfg: &BotConfig) -> Value {
     json!({
         "id": cfg.id, "name": cfg.name, "instructions": cfg.description, "agent": cfg.backend, "model": cfg.model,
         "modelOptions": cfg.model_options, "fallbacks": crate::chat::fallbacks::wire(&cfg.fallbacks), "avatarColor": cfg.avatar_color, "avatarShape": cfg.avatar_shape,
-        "folder": folder, "hidden": cfg.hidden, "approvals": cfg.permission, "manageTeam": cfg.manage_team, "createdBy": cfg.created_by,
+        "folder": folder, "hidden": cfg.hidden, "approvals": cfg.permission, "mode": cfg.mode, "manageTeam": cfg.manage_team, "createdBy": cfg.created_by,
         "routines": hub.routines.list(&cfg.id)["routines"],
     })
 }

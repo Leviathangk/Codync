@@ -161,6 +161,8 @@ pub(crate) async fn start_agent(command: &str, cwd: &str, env: &[(String, String
         started: Instant::now(),
         opening: false,
         fast_options: HashMap::new(),
+        modes: HashMap::new(),
+        mode_set: std::collections::HashSet::new(),
         reports_compaction: false,
         usage: HashMap::new(),
         renamed: HashMap::new(),

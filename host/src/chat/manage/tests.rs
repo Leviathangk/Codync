@@ -6,7 +6,8 @@ fn hub(dir: &std::path::Path) -> Arc<Hub> {
     let store = Store::open(std::path::Path::new(":memory:")).unwrap();
     for (id, manage) in [("lead", true), ("dev", false)] {
         let cfg: BotConfig = serde_json::from_value(json!({"id": id, "name": id, "backend": "claude",
-            "cwd": dir.to_string_lossy(), "manageTeam": manage, "connectors": ["github"], "skills": []}))
+            "cwd": dir.to_string_lossy(), "manageTeam": manage, "connectors": ["github"], "skills": [],
+            "permission": "auto", "mode": "plan"}))
         .unwrap();
         store.save_bot(&cfg).unwrap();
     }
@@ -48,6 +49,7 @@ async fn a_manager_creates_and_changes_bots_that_record_who_made_them() {
     );
     // It manages the team like the bot that made it, and asks no less.
     assert_eq!((cfg.created_by.as_deref(), cfg.permission, cfg.manage_team), (Some("lead"), Permission::Auto, true));
+    assert_eq!(cfg.mode.as_deref(), Some("plan"), "in the same mode");
     // And reaches only the connectors and skills it does, not every installed one.
     assert_eq!((cfg.connectors, cfg.skills), (vec!["github".to_owned()], vec![]));
     assert_eq!(made["routines"][0]["triggerDescriptions"][0], "Every 30 minutes");

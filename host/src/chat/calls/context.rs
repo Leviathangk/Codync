@@ -360,6 +360,7 @@ pub(super) mod tests {
             command: None,
             cwd: cwd.into(),
             permission: Permission::Ask,
+            mode: None,
             model: Some("opus".into()),
             model_options: std::collections::BTreeMap::new(),
             fast_mode: false,

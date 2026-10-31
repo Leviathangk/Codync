@@ -117,7 +117,8 @@ pub(crate) fn model_ids(session: &Value) -> Vec<String> {
     catalog["models"].as_array().into_iter().flatten().filter_map(|m| text(&m["id"])).collect()
 }
 
-/// `{models: [{id, name, description, options}], currentModelId, fastMode}`; `options` is
+/// `{models: [{id, name, description, options}], currentModelId, fastMode, modes: [{id, name, description}],
+/// currentModeId}` (modes: see `agent::modes`); `options` is
 /// Cursor's `cursor/list_available_models` answer (`Null` for other agents).
 fn model_catalog(session: &Value, options: &Value) -> Value {
     fn collect(options: &Value, out: &mut Vec<Value>) {
@@ -152,9 +153,12 @@ fn model_catalog(session: &Value, options: &Value) -> Value {
         let own = model_options(options, model["id"].as_str().unwrap_or_default());
         model["options"] = json!(if options.is_null() { initial_options.clone() } else { own });
     }
+    let agent_modes = crate::agent::modes::Modes::from_session(session)
+        .map_or_else(|| json!({"modes": [], "currentModeId": null}), |m| m.catalog());
     json!({"models": models, "currentModelId": current,
         "defaultModelOptions": true,
-        "fastMode": crate::agent::config::fast_mode_config(session).is_some()})
+        "fastMode": crate::agent::config::fast_mode_config(session).is_some(),
+        "modes": agent_modes["modes"], "currentModeId": agent_modes["currentModeId"]})
 }
 
 /// One model's options as `[{id, name, values: [{id, name}], default}]`, from Cursor's
@@ -263,7 +267,8 @@ mod tests {
         assert_eq!(result["models"][0]["description"], "Available here");
         assert_eq!(
             model_catalog(&json!({}), &Value::Null),
-            json!({"models": [], "currentModelId": null, "fastMode": false, "defaultModelOptions": true})
+            json!({"models": [], "currentModelId": null, "fastMode": false, "defaultModelOptions": true,
+                "modes": [], "currentModeId": null})
         );
     }
 

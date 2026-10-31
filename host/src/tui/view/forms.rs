@@ -210,8 +210,7 @@ pub(super) fn form_view(buf: &mut Buffer, area: Rect, app: &App, f: &Form) {
                 );
             }
             Field::Approvals => {
-                let s = if f.auto { "○ Ask   ◉ Auto (approve every request)" } else { "◉ Ask   ○ Auto" };
-                put(buf, vx, y, vw, s, t.text.patch(base));
+                put(buf, vx, y, vw, &format!("‹ {} ›", tr(&app.approval(f).label)), t.text.patch(base));
             }
             Field::Computer => {
                 let s = if f.computer { "◉ On   ○ Off" } else { "○ On   ◉ Off" };
