@@ -60,10 +60,12 @@ internal data class DetailsRequest(val tab: DetailsTab = DetailsTab.Details, val
     val online = state.actualConnection is LinkState.Ready
     // Saves a moment after the last change, like the desktop inspector. Keyed on the saved bot too: an edit made while
     // the previous save was still out (and so skipped) is sent once that save lands.
+    // What the last save said, shown on the page where it was made (iOS `saveError`), not over the app.
+    var saveError by remember(bot.id) { mutableStateOf<String?>(null) }
     LaunchedEffect(draft, online, saved) {
         if (!online || !draft.isValid || draft == saved) return@LaunchedEffect
         delay(600)
-        store.saveSettings(draft)
+        store.saveSettings(draft) { saveError = it }
     }
     val tabs = listOfNotNull(DetailsTab.Details, DetailsTab.Library.takeIf { hasLibrary(state.hello?.text("version")) }, DetailsTab.Memory, DetailsTab.Settings)
     Box(Modifier.fillMaxSize().background(Palette.background)) {
@@ -75,14 +77,14 @@ internal data class DetailsRequest(val tab: DetailsTab = DetailsTab.Details, val
                 Box(Modifier.fillMaxWidth().padding(top = 20.dp)) {
                     when (tab) {
                         DetailsTab.Details -> Column(verticalArrangement = Arrangement.spacedBy(28.dp)) {
-                            BotSettingsForm(state, store, draft, { draft = it }, FormPart.Often)
+                            BotSettingsForm(state, store, draft, { draft = it }, FormPart.Often, error = saveError)
                             state.screen?.let { ComputerCard(it, draft.computer, online) { on -> draft = draft.copy(computer = on) } }
                             RoutinesView(bot, state, store, routineId)
                             LaunchedEffect(Unit) { routineId = null }
                         }
                         DetailsTab.Library -> LibraryView(bot, state, store, openArtifact)
                         DetailsTab.Memory -> MemoryCard(bot.id, state, store)
-                        DetailsTab.Settings -> BotSettingsForm(state, store, draft, { draft = it }, FormPart.Rarely)
+                        DetailsTab.Settings -> BotSettingsForm(state, store, draft, { draft = it }, FormPart.Rarely, error = saveError)
                     }
                 }
             }

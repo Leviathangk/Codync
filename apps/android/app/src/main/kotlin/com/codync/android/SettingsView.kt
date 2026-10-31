@@ -35,7 +35,7 @@ import com.codync.android.design.*
  * analytics, Start over; iOS `SettingsView`). Each computer's own settings (voice chat, push, connection,
  * hidden bots) are in Computer management (`ComputersView`).
  */
-@Composable internal fun SettingsView(state: AccountContext, store: AccountStore, bottomInset: Dp) {
+@Composable internal fun SettingsView(state: AccountContext, store: AccountStore, bottomInset: Dp, computers: List<AppState> = emptyList()) {
     val uri = LocalUriHandler.current
     var confirmStartOver by remember { mutableStateOf(false) }
     var aboutAnalytics by remember { mutableStateOf(false) }
@@ -56,6 +56,7 @@ import com.codync.android.design.*
             }
         }
         ThinkingDetailsSettings()
+        ShortcutLeadSettings(state, computers, store)
         NotificationsSection()
         CardSection(footer = "Which features you use, never your messages, code or files. Helps us spot bugs sooner and make Codync better for you.") {
             row {

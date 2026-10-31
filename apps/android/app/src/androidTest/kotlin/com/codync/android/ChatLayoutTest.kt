@@ -130,10 +130,10 @@ class ChatLayoutTest {
             hello = buildJsonObject { put("version", ARTIFACTS_HOST) })
         compose.runOnUiThread { compose.activity.setContent { Hosted { ChatScreen(state, store, {}) } } }
         compose.onNode(chatTitle).performClick()
-        // Details first, with the routines; no Memory on Android until the read-only memory screen is ported.
+        // Details first, with the routines; then Library, Memory and Settings, as on the iPhone.
         compose.onNode(hasText("Details") and isSelected()).assertIsDisplayed()
         compose.onNodeWithText("Library").assertIsDisplayed()
-        compose.onNodeWithText("Memory").assertDoesNotExist()
+        compose.onNodeWithText("Memory").assertIsDisplayed()
         // The sheet merges plain text into itself, so the heading is found unmerged.
         compose.onNodeWithText("Routines", useUnmergedTree = true).assertExists()
         compose.onNodeWithText("Settings").performClick()

@@ -77,6 +77,12 @@ class LocalStore(context: Context, val contextId: String = "local") {
     fun lastComputer(): String? = File(directory, "last-computer").takeIf { it.exists() }?.readText()?.takeIf { it.isNotBlank() }
     fun saveLastComputer(id: String) = write(AtomicFile(File(directory, "last-computer")), id.toByteArray())
 
+    /** The computer whose lead "Talk to Codync" calls; none is Automatic. */
+    fun shortcutLead(): String? = File(directory, "shortcut-lead").takeIf { it.exists() }?.readText()?.takeIf { it.isNotBlank() }
+    fun saveShortcutLead(id: String?) {
+        if (id == null) File(directory, "shortcut-lead").delete() else write(AtomicFile(File(directory, "shortcut-lead")), id.toByteArray())
+    }
+
     fun setupComplete(): Boolean = File(directory, "setup-complete").exists()
     fun hasIdentity(): Boolean = File(directory, "identity").exists()
     fun completeSetup() = write(AtomicFile(File(directory, "setup-complete")), byteArrayOf(1))

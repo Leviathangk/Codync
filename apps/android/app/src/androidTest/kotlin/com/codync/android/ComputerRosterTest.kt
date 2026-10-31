@@ -62,4 +62,21 @@ class ComputerRosterTest {
         assertNull(accounts.store(mac.id))
         assertNotNull(accounts.store(linux.id))
     }
+
+    @Test fun aChatWhoseComputerIsRemovedSaysSoUntilBack() = compose.withPreviewAccounts(mac, linux) { accounts ->
+        runBlocking(Dispatchers.Main) {
+            requireNotNull(accounts.store(linux.id)).openBot("Linux bot")
+            accounts.close(linux.id)
+        }
+        assertTrue(accounts.state.value.removedChat)
+        compose.setContent {
+            Hosted {
+                MainTabs(app.copy(computers = listOf(mac), removedChat = true), listOf(state(mac, "Mac bot")), accounts, {}, {}, {}, {}, {},
+                    { _, _ -> }, {}, covered = true) {}
+            }
+        }
+        compose.onNodeWithText("This computer was removed").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Back").performClick()
+        compose.waitUntil(5_000) { !accounts.state.value.removedChat }
+    }
 }

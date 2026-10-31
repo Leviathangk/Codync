@@ -66,8 +66,16 @@ fun AppStore.saveBot(draft: BotDraft, onSaved: () -> Unit) = action("editor") {
     onSaved()
 }
 
-/** A saved bot's settings from its details, saved as they're edited: the chat stays where it is. */
-fun AppStore.saveSettings(draft: BotDraft) = command("updateBot", draft.body(), "settings:" + draft.id)
+/** A saved bot's settings from its details, saved as they're edited; [done] gets the error, or null once it took. */
+fun AppStore.saveSettings(draft: BotDraft, done: (String?) -> Unit) = action("settings:" + draft.id) {
+    try {
+        val result = ready().call("updateBot", draft.body())
+        result.jsonObject["bot"]?.let { withContext(Dispatchers.IO) { requireNotNull(database).receive(HostClient.decode(it.jsonObject)) } }
+        refresh()
+        done(null)
+    } catch (cancelled: CancellationException) { throw cancelled }
+    catch (error: Exception) { done(error.message ?: "Couldn't save the changes.") }
+}
 
 fun AppStore.saveGroup(draft: GroupDraft, onSaved: () -> Unit) = action("editor") {
     val payload = draft.body(state.value.bots)

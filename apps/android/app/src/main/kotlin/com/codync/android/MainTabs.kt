@@ -11,6 +11,10 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.Text
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
@@ -91,15 +95,33 @@ private enum class AppTab { Bots, State, Settings }
             // A chat's entry names its computer and bot; it keeps its state while sliding away.
             var shown by remember { mutableStateOf<AppState?>(null) }
             if (open != null) shown = open
-            NavStack(listOfNotNull("roster", open?.let { "${it.computer.id}/${it.selectedBot}" }), key = { it }, pop = { accounts.openBot(null) }) { entry ->
-                if (entry == "roster") BotListView(app, states, accounts, account, manage, newBot, newGroup, edit, extensions, barSpace)
-                else (states.firstOrNull { "${it.computer.id}/${it.selectedBot}" == entry } ?: shown)?.let { chat(it) }
+            NavStack(listOfNotNull("roster", open?.let { "${it.computer.id}/${it.selectedBot}" } ?: REMOVED_CHAT.takeIf { app.removedChat }),
+                key = { it }, pop = { accounts.openBot(null) }) { entry ->
+                when (entry) {
+                    "roster" -> BotListView(app, states, accounts, account, manage, newBot, newGroup, edit, extensions, barSpace)
+                    REMOVED_CHAT -> RemovedComputer { accounts.openBot(null) }
+                    else -> (states.firstOrNull { "${it.computer.id}/${it.selectedBot}" == entry } ?: shown)?.let { chat(it) }
+                }
             }
         }
         Box(Modifier.fillMaxSize().tabLayer(tab == AppTab.State)) {
             StateScreen(app, states.firstOrNull { it.computer.id == app.currentComputerId }?.usage, accounts, usage, barSpace, active = tab == AppTab.State)
         }
-        Box(Modifier.fillMaxSize().tabLayer(tab == AppTab.Settings)) { SettingsView(app, accounts, barSpace) }
+        Box(Modifier.fillMaxSize().tabLayer(tab == AppTab.Settings)) { SettingsView(app, accounts, barSpace, states) }
+    }
+}
+
+private const val REMOVED_CHAT = "removed"
+
+/** In place of a chat whose computer was removed meanwhile (iOS `ChatScreen`'s empty state). */
+@Composable private fun RemovedComputer(back: () -> Unit) {
+    Column(Modifier.fillMaxSize().background(Palette.background).statusBarsPadding()) {
+        ScreenHeader(leading = { BackButton(back) })
+        Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)) {
+            Symbol("desktopcomputer.trianglebadge.exclamationmark", size = 48.dp, tint = Palette.tertiary)
+            Text(tr("This computer was removed"), style = Type.title3.semibold, color = Palette.text, textAlign = TextAlign.Center)
+        }
     }
 }
 

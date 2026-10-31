@@ -17,6 +17,18 @@ fun AppStore.openBot(id: String?) {
 }
 fun AppStore.showTrace(show: Boolean) { mutableState.update { it.copy(trace = show) } }
 
+/** Starts a call in [botId]'s chat once it shows; the chat takes it (`takeCallRequest`). */
+fun AppStore.requestCall(botId: String) { mutableState.update { it.copy(callRequest = botId) } }
+fun AppStore.takeCallRequest(botId: String): Boolean {
+    if (state.value.callRequest != botId) return false
+    mutableState.update { it.copy(callRequest = null) }
+    return true
+}
+
+/** Puts [text] after what's in [botId]'s message box (text shared from another app). */
+fun AppStore.appendDraft(botId: String, text: String) =
+    editDraft(botId, com.codync.android.core.DictationText.join(state.value.drafts[botId]?.text.orEmpty(), text))
+
 /** The chat being read (iOS `ReadingConversation`): the open one, still on screen under Full conversation. */
 internal val AppState.readingChats: List<String> get() = listOfNotNull(selectedBot)
 

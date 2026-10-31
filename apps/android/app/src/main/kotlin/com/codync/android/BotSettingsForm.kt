@@ -38,7 +38,7 @@ internal enum class FormPart { All, Often, Rarely }
 
 /** Bot settings, in sections in the Settings style (`CardSection`), with the pickers they open. */
 @Composable internal fun BotSettingsForm(state: AppState, store: AppStore, draft: BotDraft, change: (BotDraft) -> Unit, part: FormPart,
-    modifier: Modifier = Modifier) {
+    modifier: Modifier = Modifier, error: String? = state.error) {
     var folders by remember { mutableStateOf(false) }
     // The Avatar row unfolds the picker (iOS `pickingAvatar`).
     var pickingAvatar by remember { mutableStateOf(false) }
@@ -62,7 +62,7 @@ internal enum class FormPart { All, Often, Rarely }
                     notifyRow(draft, change); computerUseRow(state, draft, change); manageTeamRow(state, draft, change); reachRows(state, draft, change)
                 }
                 Plugins(state, draft, change) { viewingSkill = it }
-                state.error?.let { Text(it, style = Type.footnote, color = Palette.danger) }
+                error?.let { Text(tr(it), style = Type.footnote, color = Palette.danger) }
             }
             FormPart.Often -> {
                 CardSection("Instructions") { instructionsRow(draft, change) }
@@ -71,6 +71,8 @@ internal enum class FormPart { All, Often, Rarely }
                     agentRows(state, store, draft, change, bot) { addingFallback = true }
                     if (!online) row { OfflineNote() }
                 }
+                // A save that didn't take, where it was made (iOS `saveError`).
+                error?.let { Text(tr(it), style = Type.footnote, color = Palette.danger) }
             }
             FormPart.Rarely -> {
                 CardSection("Profile") {
@@ -81,6 +83,7 @@ internal enum class FormPart { All, Often, Rarely }
                 CardSection("Workspace") { computerRow(state, online); placeRows(draft, change) { folders = true } }
                 CardSection("Activity") { notifyRow(draft, change); manageTeamRow(state, draft, change); reachRows(state, draft, change) }
                 Plugins(state, draft, change) { viewingSkill = it }
+                error?.let { Text(tr(it), style = Type.footnote, color = Palette.danger) }
             }
         }
     }
@@ -240,7 +243,7 @@ private fun CardRows.reachRows(state: AppState, draft: BotDraft, change: (BotDra
     val plugins = state.plugins
     PluginToggles("Connectors", "No connectors yet. Add GitHub, Linear, Notion and more from Extensions.",
         plugins?.connectors.orEmpty().map { Triple(it.id, it.name, it.command ?: it.url.orEmpty()) },
-        draft.connectors ?: plugins?.connectors.orEmpty().map { it.id }, { change(draft.copy(connectors = it)) })
+        draft.connectors.orEmpty(), { change(draft.copy(connectors = it)) })
     PluginToggles("Skills", "No skills yet. Get some from Extensions, or write your own.",
         plugins?.skills.orEmpty().map { Triple(it.id, it.name, it.description) }, draft.skills.orEmpty(), { change(draft.copy(skills = it)) }) { id ->
         plugins?.skills?.firstOrNull { it.id == id }?.let { viewSkill(SkillRef(it.id, it.name, it.description)) }

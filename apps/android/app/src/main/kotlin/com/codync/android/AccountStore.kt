@@ -76,8 +76,9 @@ class AccountStore(application: Application) : AndroidViewModel(application) {
             val computers = withContext(Dispatchers.IO) { local.computers() }
             val complete = withContext(Dispatchers.IO) { local.setupComplete() }
             val last = withContext(Dispatchers.IO) { local.lastComputer() }
+            val lead = withContext(Dispatchers.IO) { local.shortcutLead() }
             mutableState.update { AccountContext(contextId = local.referenceId, generation = it.generation + 1, account = it.account,
-                computers = computers, lastComputerId = last, tasks = PushPreferences.tasks(getApplication()),
+                computers = computers, lastComputerId = last, shortcutLeadComputer = lead, tasks = PushPreferences.tasks(getApplication()),
                 setupComplete = complete || computers.isNotEmpty() || userId != null) }
             // A computer that can't open (damaged drafts) is reported; the others, the cloud and the widgets go on.
             for (computer in computers) try { open(computer) }
@@ -87,6 +88,7 @@ class AccountStore(application: Application) : AndroidViewModel(application) {
             withContext(Dispatchers.IO) { AttachmentFiles(getApplication(), local.directory).retainPending(stores.value.flatMap { it.pendingFiles() }) }
             if (userId != null) configureCloud(userId)
             mutableState.update { it.copy(loading = false) }
+            LiveShortcut.publish(getApplication(), computers.isNotEmpty())
             observeWidgets(requireNotNull(widgetOwner))
             refreshCloud()
         } catch (error: CancellationException) { throw error }
@@ -125,6 +127,7 @@ class AccountStore(application: Application) : AndroidViewModel(application) {
         val context = state.value
         val store = AppStore(getApplication(), local, computer, context.contextId, context.generation, contextJob, ::saveComputer, opened = { opened ->
             for (other in stores.value) if (other !== opened) other.openBot(null)
+            mutableState.update { it.copy(removedChat = false) }
             noteActive(opened.id)
         }, usageRead = ::publishUsage)
         store.open()
@@ -136,7 +139,9 @@ class AccountStore(application: Application) : AndroidViewModel(application) {
     /** Forgets [id] here: its link, mirror and drafts; its bots and chats stay on the computer. */
     internal suspend fun close(id: String) {
         val store = store(id) ?: return
+        val chatOpen = store.state.value.selectedBot != null
         mutableStores.update { list -> list.filter { it.id != id } }
+        if (chatOpen) mutableState.update { it.copy(removedChat = true) }
         store.retire()
         computerChanges.withLock {
             val computers = state.value.computers.filter { it.id != id }
@@ -146,6 +151,7 @@ class AccountStore(application: Application) : AndroidViewModel(application) {
                 DraftBook.delete(local.directory, id)
             }
             mutableState.update { it.copy(computers = computers) }
+            LiveShortcut.publish(getApplication(), computers.isNotEmpty())
         }
     }
 
@@ -155,6 +161,7 @@ class AccountStore(application: Application) : AndroidViewModel(application) {
         val computers = if (saved.any { it.id == computer.id }) saved.map { if (it.id == computer.id) computer else it } else saved + computer
         withContext(Dispatchers.IO) { local.saveComputers(computers) }
         mutableState.update { it.copy(computers = computers) }
+        LiveShortcut.publish(getApplication(), true)
     }
 
     /**
@@ -186,6 +193,7 @@ class AccountStore(application: Application) : AndroidViewModel(application) {
 
     /** Opens a chat on its computer, closing the one open on another; null closes it. */
     fun openBot(ref: BotDestination?) {
+        mutableState.update { it.copy(removedChat = false) }
         for (store in stores.value) store.openBot(if (store.id == ref?.computerId) ref.botId else null)
     }
 

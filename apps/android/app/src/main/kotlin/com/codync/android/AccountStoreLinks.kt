@@ -97,6 +97,18 @@ fun AccountStore.openLink(uri: Uri) {
     }
 }
 
+/** Text another app shared waits for a bot to go to (`ShareToBot`), once the account has loaded. */
+fun AccountStore.share(text: String) {
+    linkJob?.cancel()
+    linkJob = viewModelScope.launch {
+        withTimeoutOrNull(30_000) { activated() } ?: return@launch
+        navigate(LinkPage.Bots)
+        mutableState.update { it.copy(sharing = text) }
+    }
+}
+
+fun AccountStore.finishSharing() = mutableState.update { it.copy(sharing = null) }
+
 /** `codync://computers` and `codync://plugins`: Computer management, or the last active computer's extensions, over the roster. */
 fun AccountStore.openPage(page: LinkPage) {
     linkJob?.cancel()

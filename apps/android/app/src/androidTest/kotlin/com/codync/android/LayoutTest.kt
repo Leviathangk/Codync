@@ -45,12 +45,21 @@ class LayoutTest {
         compose.onNode(hasSetTextAction() and hasText("Name your bot")).assertIsDisplayed()
         compose.onNodeWithContentDescription("Close").performClick()
         compose.onNodeWithContentDescription("Create").assertDoesNotExist()
-        compose.onNode(tab("State")).performClick().assertIsSelected()
+        // The State tab's widget previews never stop moving: step the clock by hand there.
+        compose.mainClock.autoAdvance = false
+        compose.onNode(tab("State")).performClick()
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.onNode(tab("State")).assertIsSelected()
         compose.onNodeWithText("Widget").assertIsSelected()
-        compose.onNodeWithText("Choose your widget").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Choose your widget").performScrollTo()
+        compose.mainClock.advanceTimeBy(500)
+        compose.onNodeWithText("Choose your widget").assertIsDisplayed()
         snapshot("widget-gallery")
         compose.onNodeWithText("Bot 1").assertDoesNotExist()
-        compose.onNode(tab("Bots")).performClick().assertIsSelected()
+        compose.onNode(tab("Bots")).performClick()
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.mainClock.autoAdvance = true
+        compose.onNode(tab("Bots")).assertIsSelected()
         compose.onNodeWithText("Bot 5").assertIsDisplayed()
     }
 

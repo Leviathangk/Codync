@@ -130,6 +130,8 @@ private data class Editing<T>(val computerId: String, val draft: T)
             AnalyticsOnAppear(AnalyticsEvent.ScreenViewed(AnalyticsScreen.Pairing))
             PairingView(app, accounts, inModal = true)
         }
+        // Text another app shared: which bot's box it goes to.
+        CodyncSheet(app.sharing?.takeIf { root == Root.Tabs }, accounts::finishSharing) { text -> ShareToBot(text, states, accounts) }
         CodyncSheet(showUsage && !app.loading, { showUsage = false }) {
             AnalyticsOnAppear(AnalyticsEvent.ScreenViewed(AnalyticsScreen.Usage))
             UsageSheet(app, states, accounts)

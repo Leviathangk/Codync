@@ -122,6 +122,12 @@ class MainActivity : ComponentActivity() {
         super.onStop()
     }
     private fun handle(intent: Intent?) {
+        if (intent?.action == LiveShortcut.ACTION) { intent.action = null; accounts.talkToLead(); return }
+        if (intent?.action == Intent.ACTION_SEND) {
+            intent.getStringExtra(Intent.EXTRA_TEXT)?.takeIf { it.isNotBlank() }?.let { accounts.share(it.take(64 * 1024)) }
+            intent.action = null
+            return
+        }
         val uri = intent?.data ?: return
         intent.getStringExtra(NotificationDisplay.ALERT_KIND)?.let { category ->
             intent.removeExtra(NotificationDisplay.ALERT_KIND)

@@ -29,6 +29,12 @@ data class AccountContext(
     val pairing: Boolean = false,
     /** This phone's computers, in the order it shows them. */
     val computers: List<Computer> = emptyList(),
+    /** The computer whose lead "Talk to Codync" calls; null is Automatic (iOS `shortcutLeadComputer`). */
+    val shortcutLeadComputer: String? = null,
+    /** Text another app shared, waiting for a bot to go to. */
+    val sharing: String? = null,
+    /** The open chat's computer was removed: the chat's place shows that until Back (iOS `ChatScreen`). */
+    val removedChat: Boolean = false,
     /** The computer the Usage sheet and widget show: the last one a chat was opened or sent on. */
     val lastComputerId: String? = null,
     val navigationRequest: Int = 0,
@@ -62,6 +68,8 @@ data class AppState(
     val actualConnection: LinkState = LinkState.Connecting,
     /** The chat open on this computer; at most one computer has one (`AccountStore.openBot`). */
     val selectedBot: String? = null,
+    /** A call to start in this bot's chat once it shows ("Talk to Codync"). */
+    val callRequest: String? = null,
     val trace: Boolean = false,
     val busy: Set<String> = emptySet(),
     val historyComplete: Set<String> = emptySet(),
