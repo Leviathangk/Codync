@@ -1,15 +1,18 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
-import { findFile } from 'electron-updater/out/providers/Provider.js'
 import { parse, stringify } from 'yaml'
-import { mergeWindowsUpdateFeeds } from './windows-update-feed.mjs'
 
-const feed = (arch, version = '2.33.0') => ({
+const require = createRequire(import.meta.url)
+const { mergeWindowsUpdateFeeds } = require('../../tools/windows-update-feed.mjs')
+const { findFile } = require('electron-updater/out/providers/Provider.js')
+
+const feed = (arch: string, version = '2.33.0') => ({
   version,
   files: [{ url: `codync-windows-${arch}.exe`, sha512: `${arch}-hash`, size: 123 }],
   path: `codync-windows-${arch}.exe`,
@@ -25,11 +28,11 @@ test('one Windows feed keeps both installers and legacy x64 metadata', () => {
   assert.equal(x64.files.length, 1)
 })
 
-for (const arch of ['x64', 'arm64']) {
+for (const arch of ['x64', 'arm64'] as const) {
   test(`electron-updater selects the ${arch} installer from the combined feed`, (context) => {
     context.mock.property(process, 'arch', arch)
     const merged = mergeWindowsUpdateFeeds(feed('x64'), feed('arm64'))
-    const resolved = merged.files.map((info) => ({ info, url: new URL(info.url, 'https://example.com/') }))
+    const resolved = merged.files.map((info: { url: string }) => ({ info, url: new URL(info.url, 'https://example.com/') }))
     assert.equal(findFile(resolved, 'exe').info.url, `codync-windows-${arch}.exe`)
   })
 }
@@ -38,8 +41,7 @@ test('rejects different versions and missing, swapped or unhashed installers', (
   assert.throws(() => mergeWindowsUpdateFeeds(feed('x64'), feed('arm64', '2.32.0')), /versions must match/)
   assert.throws(() => mergeWindowsUpdateFeeds(feed('x64'), { ...feed('arm64'), files: [] }), /must describe/)
   assert.throws(() => mergeWindowsUpdateFeeds(feed('arm64'), feed('x64')), /must describe/)
-  const unhashed = feed('arm64')
-  delete unhashed.files[0].sha512
+  const unhashed = { ...feed('arm64'), files: [{ url: 'codync-windows-arm64.exe', size: 123 }] }
   assert.throws(() => mergeWindowsUpdateFeeds(feed('x64'), unhashed), /SHA-512/)
 })
 
@@ -51,7 +53,7 @@ test('the workflow command merges YAML feeds on disk', (context) => {
   const output = join(dir, 'latest.yml')
   writeFileSync(x64, stringify(feed('x64')))
   writeFileSync(arm64, stringify(feed('arm64')))
-  const script = fileURLToPath(new URL('./windows-update-feed.mjs', import.meta.url))
+  const script = fileURLToPath(new URL('../../tools/windows-update-feed.mjs', import.meta.url))
   execFileSync(process.execPath, [script, x64, arm64, output])
   const merged = parse(readFileSync(output, 'utf8'))
   assert.deepEqual(merged, mergeWindowsUpdateFeeds(feed('x64'), feed('arm64')))

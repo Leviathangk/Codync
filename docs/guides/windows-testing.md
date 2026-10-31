@@ -16,7 +16,8 @@ each installed host after running the installer and checking the native app/host
 Installers, checksums and blockmaps use `codync-windows-<arch>.exe` names.
 Both builds contribute to one `latest.yml` update feed, uploaded only after both installers;
 electron-updater selects the file matching the installed app's architecture. The pinned computer-use
-driver and UI Automation helper remain x64 and run through Prism on ARM64 Windows 11.
+driver and UI Automation helper remain x64 and run through Prism on ARM64 Windows 11, as do
+registry agents that ship only a `windows-x86_64` build (the ARM64 host downloads that one instead).
 Windows packaging forces the supported BCJ archive filter: the bundled NSIS decoder silently skips
 executables compressed with modern 7z ARM64 filters, even when the installer reports success.
 For a manual CI check, dispatch **Release desktop** with `windows_only` enabled to build both
