@@ -5,7 +5,7 @@ description: Pack the user's Grok Bot agents and group chats into one .zip file 
 
 # Export agents for Codync
 
-You write one `.zip` file. The user opens it in Codync (**Settings → Import bots** in the desktop app, or
+You write one `.zip` file. The user opens it in Codync (**+ → Import bots…** in the desktop app, or
 `codync-host import <file>` in a terminal) on the same computer. Codync reads it there; nothing is uploaded.
 Codync checks the manifest strictly, so keep to the format below.
 
@@ -39,7 +39,7 @@ Codync checks the manifest strictly, so keep to the format below.
    `~/Downloads/codync-export-<YYYY-MM-DD>.zip` so Codync never sees half a file.
 
 7. **Report** the file's path, how many agents and group chats it holds, and what you left out. Tell the
-   user to open Codync's **Settings → Import bots** and choose the file.
+   user to open Codync's **+ → Import bots…** and choose the file.
 
 ## Format
 
