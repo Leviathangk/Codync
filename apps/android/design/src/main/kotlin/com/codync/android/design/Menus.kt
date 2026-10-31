@@ -8,11 +8,14 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
 import androidx.compose.foundation.gestures.drag
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.ui.input.pointer.AwaitPointerEventScope
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventTimeoutCancellationException
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -122,14 +125,14 @@ class ContextDrag(val start: () -> Unit, val move: (Float) -> Unit, val end: () 
         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
         open = true
     }
-    val gestures = if (reorder == null) Modifier.combinedClickable(enabled = enabled, onClick = { tap?.invoke() },
-        onLongClickLabel = "Actions", onLongClick = hold)
     // One gesture for tap, hold and drag: a click detector would swallow the move after the hold.
-    else Modifier.semantics {
+    // A message reads as one node with its actions, as a clickable would merge it; a row that reorders keeps its own.
+    val gestures = Modifier.semantics(mergeDescendants = reorder == null) {
         if (enabled) { onClick { tap?.invoke(); true }; onLongClick("Actions") { hold(); true } }
     }.pointerInput(reorder, enabled) {
         if (!enabled) return@pointerInput
         awaitEachGesture {
+            if (reorder == null) { tapOrHold(tap, hold); return@awaitEachGesture }
             val down = awaitFirstDown()
             val held = awaitLongPressOrCancellation(down.id)
             if (held == null) {
@@ -155,6 +158,25 @@ class ContextDrag(val start: () -> Unit, val move: (Float) -> Unit, val end: () 
         }
     }
     return onGloballyPositioned { anchor = it.boundsInRoot() }.then(gestures)
+}
+
+/**
+ * A tap, or a hold anywhere on the content, its links and buttons included, as the iPhone's context menu: the press counts
+ * even when a child took it, and after a hold the rest of it is kept from the child, so a held link opens the menu, not the page.
+ */
+private suspend fun AwaitPointerEventScope.tapOrHold(tap: (() -> Unit)?, hold: () -> Unit) {
+    awaitFirstDown(requireUnconsumed = false)
+    try {
+        val up = withTimeout(viewConfiguration.longPressTimeoutMillis) { waitForUpOrCancellation() }
+        // null: a child (a link, a button) took the tap, or the press became a scroll.
+        if (up != null) { up.consume(); tap?.invoke() }
+    } catch (_: PointerEventTimeoutCancellationException) {
+        hold()
+        do {
+            val event = awaitPointerEvent(PointerEventPass.Initial)
+            event.changes.forEach { it.consume() }
+        } while (event.changes.any { it.pressed })
+    }
 }
 
 /** The menu panel and its placement around `anchor`. `cover`: grow over the anchor (pull-down menus). */

@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.edit
 import com.codync.android.core.UpdateReminder
 import com.codync.android.design.*
+import com.google.android.play.core.appupdate.AppUpdateManager
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory
 import com.google.android.play.core.install.model.UpdateAvailability
 import com.google.android.play.core.ktx.requestAppUpdateInfo
@@ -53,8 +54,13 @@ internal object AppUpdates {
         val now = System.currentTimeMillis()
         if (now - askedAt < 6 * 3_600_000L) return
         askedAt = now
+        ask(AppUpdateManagerFactory.create(context))
+    }
+
+    /** What [manager] (Google Play's, or a test's stand-in) has for this phone. */
+    internal suspend fun ask(manager: AppUpdateManager) {
         try {
-            val info = AppUpdateManagerFactory.create(context).requestAppUpdateInfo()
+            val info = manager.requestAppUpdateInfo()
             mutableStore.value = if (info.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE)
                 UpdateReminder.versionOf(info.availableVersionCode().toLong()) else APP_RELEASE
         } catch (cancelled: CancellationException) { throw cancelled }

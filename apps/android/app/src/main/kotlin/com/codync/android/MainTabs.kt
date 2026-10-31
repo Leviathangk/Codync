@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -49,6 +50,11 @@ private enum class AppTab { Bots, State, Settings }
     val open = states.firstOrNull { it.selectedBot != null }
     // Opening a bot (notification, widget, link) always lands on the Bots tab.
     if (open != null && tab != AppTab.Bots) tab = AppTab.Bots
+    // Other links pick the tab as on the iPhone: usage on State, the computers and extensions over Bots; another account starts on Bots.
+    var handledLink by rememberSaveable { mutableIntStateOf(app.navigationRequest) }
+    if (handledLink != app.navigationRequest) { handledLink = app.navigationRequest; tab = if (app.navigationPage == LinkPage.Usage) AppTab.State else AppTab.Bots }
+    var handledAccount by rememberSaveable { mutableIntStateOf(app.generation) }
+    if (handledAccount != app.generation) { handledAccount = app.generation; tab = AppTab.Bots }
     // Leaving a chat whose answer was read may invite a rating, once the roster has stayed clear (iOS `RootView`).
     val context = LocalContext.current
     ReviewOnReturn(open?.let { "${app.contextId}/${it.computer.id}/${it.selectedBot}" })

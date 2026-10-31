@@ -55,5 +55,8 @@ class WidgetFeedTest {
         assertEquals("a", mostUrgentBot(bots)?.id)
         assertEquals("b", mostUrgentBot(bots.drop(1))?.id)
         assertNull(mostUrgentBot(bots.drop(2)))
+        // Two bots that need you equally: the most recent, pinned or not (iOS `mostUrgent`).
+        val tie = listOf(WidgetBot("pinned", "P", "needsInput", lastAt = 1), WidgetBot("recent", "R", "needsInput", lastAt = 2))
+        assertEquals("recent", mostUrgentBot(tie)?.id)
     }
 }

@@ -30,7 +30,8 @@ class WidgetStoreTest {
         assertNull(PushPreferences.activeUser(context))
         val originalFile = AtomicFile(File(context.noBackupFilesDir, "widget-owner.json"))
         val original = if (originalFile.baseFile.exists()) originalFile.readFully() else null
-        val computer = LocalStore(context).computers().single()
+        // The emulator's app may have more than one computer paired; the test needs one of them.
+        val computer = LocalStore(context).computers().first()
         val first = LocalStore(context, "widget-test-a-" + UUID.randomUUID())
         val second = LocalStore(context, "widget-test-b-" + UUID.randomUUID())
         try {

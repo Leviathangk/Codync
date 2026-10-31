@@ -38,37 +38,39 @@ emulator against a real host; device acceptance is listed separately.
 - [x] Every screen above walked through on an API 36 emulator against a disposable host, in light and dark mode, side by side with the iOS simulator.
 - [x] Live update and its status bar chip on an API 36.1 emulator.
 - [x] `AppStore.kt` split by responsibility (clean-code size rule), undecodable events stop after one rewind and show *Update this app*, timeouts surface as errors.
-- [ ] Instrumentation suite run on an emulator: only single classes so far (`PlatformSpeechTest`, `AlertNotificationTest`, probes), through `am instrument` because Gradle's connected run uninstalls the paired app.
+- [x] Instrumentation suite run on an emulator (2026-11-01: 134 tests, all passing): through `am instrument`, because Gradle's connected run uninstalls the paired app, on an AVD with `hw.keyboard=yes` (`TerminalSurfaceTest` needs a hardware keyboard) and no System UI dialog in front; the `Live*` probes skip without their host.
 
 ## Not done yet
 
-Where the Android app still falls short, as of 2026-10-31. Everything else in the table above
+Where the Android app still falls short, as of 2026-11-01. Everything else in the table above
 was walked through on an emulator against a real host (several computers: two disposable hosts
-on one emulator, 2026-10-31).
+on one emulator, 2026-10-31). Push delivery was walked on 2026-11-01: a debug build with Firebase
+(`-PcodyncGoogleServicesFile=<google-services.json>`) on the Google APIs emulator, killed, got a bot's
+*Task complete* alert through the dev relay and FCM (pushes wait while any phone, an iOS simulator
+included, is connected to that computer).
 
 ### Not verified (needs an account, a key, a device or the real Mac)
 
 | What | Code | What it needs |
 | --- | --- | --- |
 | Revoke this phone's access (also on Remove of a computer approved through the account); removing older copies of the computer from the account | `core/.../CloudClient.kt` (`revokeAccess`, `removeComputer`), `AccountStoreAccount.kt`, `ComputersView.kt` | A signed-in account on the emulator or a phone; only request tests cover it |
-| Push delivery (alerts, background Live update refresh) | `PushService.kt`, `AppStoreNotifications.kt` | A device with Google Play services running the official build (Firebase and the relay's FCM secret are set up since 2026-10-24). The notification look is covered by `AlertNotificationTest` |
+| Push on a phone running the Play build, and the background Live update refresh | `PushService.kt`, `AppStoreNotifications.kt` | A phone with the official build; alert delivery through FCM is verified on the emulator |
 | OpenAI Realtime, Gemini Live and Speech mode with a real key | `WebRtcPeer.kt`, `core/.../OpenAIRealtimeEngine.kt`, `GeminiLiveEngine.kt`, `CloudSpeechEngine.kt` | A provider key on the paired computer; the fallback to on-device voice is verified |
 | Remote screen: Chinese IME composition, a hardware keyboard, the TURN relay path and its credential renewal | `ScreenKeys.kt`, `ScreenSession.kt`, `ScreenView.kt` | A computer it's safe to type into, and a signed-in host for the relay; viewing, trackpad and pinch zoom are verified |
 | On-device voice with a live microphone | `PlatformSpeech.kt`, `LocalVoiceAudio.kt` | A phone; on the emulator the recognizer was fed the speech fixture |
 | Camera QR pairing (focus and 1080p frames), launcher widget refresh, foldables, TalkBack end to end | `QrViewfinder.kt`, `CodyncWidgets.kt` | Physical devices; portrait lock with the rotating screen viewer, 130% text and TalkBack's Move up/down were checked on the emulator |
-| Google Play's update info and review prompt | `AppUpdates.kt`, `ReviewPrompt.kt` | An install from Google Play (a debug build gets neither); the policy has unit tests |
+| Google Play's review prompt, and update info from Play itself | `AppUpdates.kt`, `ReviewPrompt.kt` | An install from Google Play (a debug build gets neither); the review policy has unit tests, and `AppUpdatesTest` drives the update reminder and *Update Codync* through Play's `FakeAppUpdateManager` |
 
 ### Different from the iPhone on purpose or by platform
 
 - **Notification subtitle**: "Task complete" / "Response needed" / "Task failed" is the
   notification's sub text, which Android's conversation layout doesn't draw (`PushService.kt`).
-- **Bots tile** refreshes when Quick Settings opens, not live; between two bots that need you
-  equally it picks the pinned one, the iPhone the most recent (`core/.../WidgetFeed.kt` `mostUrgentBot`).
+- **Bots tile** refreshes when Quick Settings opens, not live (it picks its bot as the iPhone's control does:
+  waiting for you, then working, then the most recent, `core/.../WidgetFeed.kt` `mostUrgentBot`).
 - **Shared files**: leaving the chat during a download skips the share sheet when it finishes
   (the card shows *Downloaded*); shared copies are deleted after a day (`AppStoreFiles.kt`,
   `AttachmentFiles.kt`).
 - **Pull to refresh** on the roster and in Computer management uses the chat's indicator; iOS uses the system one.
-- **`computers` / `plugins` links** open over the current tab; iOS switches to Bots first.
 - **Shortcuts actions** (Open Live Mode, Send Text to Bot) are Apple App Intents; Android's counterparts are
   **Talk to Codync** in the app icon's shortcuts (the lead, by Settings → Shortcuts → Lead to call) and text shared
   from another app, which opens the picked bot's chat with the text in its box ([iOS Shortcuts](../features/ios-shortcuts.md), `LiveShortcut.kt`, `ShareToBot.kt`).

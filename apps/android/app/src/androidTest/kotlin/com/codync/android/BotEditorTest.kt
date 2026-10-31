@@ -34,6 +34,8 @@ class BotEditorTest {
         render(scout, close = { closed = true })
         compose.onNodeWithText("Settings").assertIsDisplayed()
         compose.onNodeWithContentDescription("Save").assertIsEnabled()
+        // The Avatar row unfolds the picker.
+        compose.onNodeWithContentDescription("Edit Bot avatar").performClick()
         compose.onNodeWithContentDescription("blob shape").assertIsSelected()
         compose.onNodeWithContentDescription("cloud shape").performClick().assertIsSelected()
         compose.onNodeWithContentDescription("blob shape").assertIsNotSelected()
@@ -42,14 +44,19 @@ class BotEditorTest {
         snapshot("bot-editor-settings-preview.png")
         name.performTextReplacement("")
         compose.onNodeWithContentDescription("Save").assertIsNotEnabled()
-        compose.onNodeWithContentDescription("Agent: Claude").performScrollTo().performClick()
+        // The agent row ("Claude · Default") unfolds into the model list; the agent's name opens the agents.
+        compose.onNodeWithText("Claude · Default").performScrollTo().performClick()
+        compose.onNodeWithText("Claude").performScrollTo().performClick()
+        // The agent list scrolls on its own; bring the picker's last line, under it, into the form's view.
+        compose.onNodeWithText("Changing the model starts a new agent session. Chat history is kept.").performScrollTo()
         compose.onNodeWithText("Codex (not installed)").assertIsDisplayed()
         compose.onNodeWithText("Custom command").performClick()
         compose.onNode(hasSetTextAction() and hasText("ACP command", substring = true)).performScrollTo().performTextInput("my-agent --acp")
         compose.onNodeWithText("my-agent --acp").assertIsDisplayed()
-        compose.onNodeWithContentDescription("Agent: Custom command").performClick()
+        compose.onNodeWithText("Custom command").performScrollTo().performClick()
+        compose.onNodeWithText("Changing the model starts a new agent session. Chat history is kept.").performScrollTo()
         compose.onNodeWithText("Codex (not installed)").performClick()
-        compose.onNodeWithText("Install Codex on your computer.").assertIsDisplayed()
+        compose.onNodeWithText("Install Codex on your computer.").performScrollTo().assertIsDisplayed()
         compose.onNode(hasSetTextAction() and hasText("ACP command", substring = true)).assertDoesNotExist()
         compose.onNodeWithContentDescription("Close").performClick()
         assertTrue(closed)
@@ -108,17 +115,19 @@ class BotEditorTest {
         compose.onNodeWithText("You'll get an approval card and a notification whenever the agent asks.").assertIsDisplayed()
         toggle("Notifications").performScrollTo().assertIsOn().performClick().assertIsOff()
         toggle("Use the computer").performScrollTo().assertIsOff()
-        toggle("GitHub").performScrollTo().assertIsOn().performClick().assertIsOff()
+        // Connectors start off until picked, as on the iPhone.
+        toggle("GitHub").performScrollTo().assertIsOff().performClick().assertIsOn()
         toggle("Review changes").performScrollTo().assertIsOff().performClick().assertIsOn()
         compose.onNodeWithContentDescription("Workspace").performScrollTo().performClick()
         compose.onNodeWithText("Choose project folder…").performClick()
-        compose.onNodeWithText("Folders").assertIsDisplayed()
+        compose.onNodeWithText("Choose workspace").assertIsDisplayed()
     }
 
     @Test fun offlineSettingsDisableSavingButKeepTheModelEditable() {
         render(scout.copy(model = "old-model"), fixture().copy(actualConnection = LinkState.Connecting))
         compose.onNodeWithContentDescription("Save").assertIsNotEnabled()
         compose.onNodeWithText("Reconnect to this computer to save settings.").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Claude · old-model").performScrollTo().performClick()
         compose.onNodeWithText("Connect to this computer to load its models. You can still enter a model ID.").performScrollTo().assertIsDisplayed()
         compose.onNode(hasSetTextAction() and hasText("old-model")).performTextReplacement("my-model")
         compose.onNode(hasSetTextAction() and hasText("my-model")).assertIsDisplayed()
@@ -148,7 +157,7 @@ class BotEditorTest {
                 add(buildJsonObject { put("id", "codex"); put("name", "Codex"); put("available", false); put("installHint", "Install Codex on your computer.") })
             })
             put("screen", buildJsonObject { put("enabled", true) })
-        })
+        }, screen = ScreenState(enabled = true, computerUse = true))
 
     private fun snapshot(name: String) {
         if (InstrumentationRegistry.getArguments().getString("layoutSnapshots") != "true") return

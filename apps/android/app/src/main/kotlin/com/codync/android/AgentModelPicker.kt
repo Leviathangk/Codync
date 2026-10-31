@@ -24,6 +24,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.codync.android.core.AgentModels
 import com.codync.android.core.Bot
@@ -71,7 +73,8 @@ private enum class PickerStage { Closed, Agents, Models, Settings }
     val levels = modelOptions.mapNotNull { option -> option.values.firstOrNull { it.id == (options[option.id] ?: option.default) }?.name }
     val summary = (listOf(agentName, modelName) + levels + if (fastMode) listOf("Fast") else emptyList()).joinToString(" · ")
     Column(Modifier.fillMaxWidth().animateContentSize(Motion.layoutSize), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(Modifier.fillMaxWidth().clickable { open(if (stage == PickerStage.Closed) PickerStage.Models else PickerStage.Closed) }.padding(vertical = 8.dp),
+        Row(Modifier.fillMaxWidth().clickable { open(if (stage == PickerStage.Closed) PickerStage.Models else PickerStage.Closed) }
+            .semantics { stateDescription = if (stage == PickerStage.Closed) "Collapsed" else "Expanded" }.padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Crossfade(summary, Modifier.weight(1f), animationSpec = Motion.fade(), label = "Agent summary") { text ->
                 Text(text, style = Type.subheadline, color = Palette.text)
@@ -88,7 +91,7 @@ private enum class PickerStage { Closed, Agents, Models, Settings }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     if (stage == PickerStage.Models && chooseAgent != null) IconButton("Back", "chevron.left") { open(PickerStage.Agents) }
                     Box(Modifier.weight(1f)) { PlainTextField(query, { query = it }, prompt = if (stage == PickerStage.Agents) "Search agents" else "Search models", singleLine = true) }
-                    if (loading) Spinner(12.dp) else IconButton("Refresh model list", "arrow.clockwise") { retry++ }
+                    if (loading) Spinner(12.dp) else IconButton(if (failure == null) "Refresh model list" else "Retry model list", "arrow.clockwise") { retry++ }
                 }
                 val choices = (if (stage == PickerStage.Agents) agents else modelChoices).filter { it.second.contains(query, ignoreCase = true) }
                 Column(Modifier.heightIn(max = 180.dp).verticalScroll(rememberScrollState())) {

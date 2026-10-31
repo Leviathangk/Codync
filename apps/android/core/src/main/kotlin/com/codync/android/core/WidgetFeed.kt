@@ -6,7 +6,9 @@ import kotlinx.serialization.Serializable
 @Serializable data class WidgetBot(val id: String, val name: String, val status: String,
     val unread: Int = 0, val avatarColor: String = "blue", val avatarShape: String = "blob", val customIcon: CustomIcon? = null,
     /** The computer it lives on: bot IDs are only unique per computer. */
-    val computerId: String = "") {
+    val computerId: String = "",
+    /** Its last activity, for the Bots tile's tie-break. */
+    val lastAt: Long = 0) {
     /** The bot across every computer, as the Team widget's picks keep it (iOS re-keys `<computerId>/<botId>`). */
     val key: String get() = if (computerId.isEmpty()) id else "$computerId/$id"
 }
@@ -28,8 +30,9 @@ fun usageLimits(report: UsageReport): List<ProviderLimit> {
     return listOf(top.value) + all.filterIndexed { index, _ -> index != top.index }
 }
 
-/** The Bots tile's bot: the one that needs you most, in the feed's order, if any bot is at work. */
-fun mostUrgentBot(bots: List<WidgetBot>): WidgetBot? = bots.firstOrNull { it.status == "needsInput" || it.status == "working" }
+/** The Bots tile's bot: waiting for you, then working, then the most recent (iOS `mostUrgent`); none while every bot is quiet. */
+fun mostUrgentBot(bots: List<WidgetBot>): WidgetBot? = bots.filter { it.status == "needsInput" || it.status == "working" }
+    .minWithOrNull(compareBy<WidgetBot> { widgetRank(it.status) }.thenByDescending { it.lastAt })
 
 /**
  * The Team widget's four spots: the picked bots first (a deleted pick falls back), then the feed's order (who needs you).
@@ -49,7 +52,7 @@ fun widgetBots(bots: Map<String, List<Bot>>): List<WidgetBot> = bots.flatMap { (
     .filter { (_, bot) -> !bot.hidden && !bot.deleted }
     .sortedWith(compareBy<Pair<String, Bot>> { (_, bot) -> widgetRank(bot.status) }
         .thenByDescending { it.second.pinned }.thenByDescending { it.second.lastAt }.thenBy { it.second.name })
-    .take(256).map { (computer, it) -> WidgetBot(it.id, it.name.take(256), it.status, it.unread, it.avatarColor, it.avatarShape, it.customIcon, computer) }
+    .take(256).map { (computer, it) -> WidgetBot(it.id, it.name.take(256), it.status, it.unread, it.avatarColor, it.avatarShape, it.customIcon, computer, it.lastAt) }
 
 /**
  * The feed after reading [computers] (each one's ID and bots; null when it couldn't be read, so the bots it showed stay),

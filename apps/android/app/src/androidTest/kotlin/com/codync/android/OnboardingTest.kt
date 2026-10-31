@@ -12,14 +12,21 @@ class OnboardingTest {
     @get:Rule val compose = createComposeRule()
 
     @Test fun welcomeLeadsToInstallAndBackReturnsToWelcome() {
+        // The welcome crew never stops moving: step the clock by hand so the test can settle.
+        compose.mainClock.autoAdvance = false
         compose.setContent { Hosted { CodyncApp(AccountContext(loading = false), emptyMap(), viewModel()) } }
+        step()
         compose.onNodeWithText("Your coding agents", substring = true).assertIsDisplayed()
         compose.onNodeWithText("Get started").performClick()
+        step()
         compose.onNodeWithText("Install Codync", substring = true).assertIsDisplayed()
         compose.onNodeWithContentDescription("Step 1 of 2").assertIsDisplayed()
         compose.onNodeWithContentDescription("Back").performClick()
+        step()
         compose.onNodeWithText("Get started").assertIsDisplayed()
     }
+
+    private fun step() = compose.mainClock.advanceTimeBy(1_000)
 
     @Test fun installStepsFollowTheComputerAndScanKeepsTheChoice() {
         var skipped = false

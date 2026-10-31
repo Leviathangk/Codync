@@ -3,7 +3,6 @@ package com.codync.android
 import android.graphics.Bitmap
 import android.os.Build
 import androidx.activity.compose.setContent
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -19,70 +18,59 @@ import java.io.File
 class ChatLayoutTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
-    @Test fun oneWayBotMessagesShowAttributionWithoutAStatusLine() {
+    private fun exchange(id: String, seq: Long, chat: String, source: String, target: String, text: String, reply: String? = null,
+        status: String = "completed", detail: String? = null) =
+        Entry(id, seq, chat, rev = seq, kind = "notice", createdAt = System.currentTimeMillis() - 60_000 + seq, data = buildJsonObject {
+            put("text", text); put("status", status)
+            put("botMessage", buildJsonObject {
+                put("sourceBotId", source); put("targetBotId", target); put("text", text)
+                reply?.let { put("reply", it) }; detail?.let { put("detail", it) }
+            })
+        })
+
+    @Test fun aBotToBotMessageIsOneLineThatOpensTheirConversation() {
         assumeTrue(Build.PRODUCT.startsWith("sdk"))
         val store = previewStore()
-        val bot = Bot("handoff-preview", "Dex")
-        val body = "Urgent. Investigate the connection error."
-        val heading = "Message from Miles: $body"
-        val detail = "Recipient stopped. Partial work may have happened."
-        val entry = Entry("bot-message", 1, bot.id, rev = 1, kind = "notice", data = buildJsonObject {
-            put("text", "$heading\n$detail"); put("heading", heading); put("delegationId", "request"); put("style", "error")
-        })
-        val state = AppState(previewComputer, loading = false, selectedBot = bot.id, bots = listOf(bot),
+        val dex = Bot("exchange-preview", "Dex"); val miles = Bot("miles-preview", "Miles")
+        val request = "Investigate the connection error."
+        val answer = "The caller cancelled while audio was connecting."
+        val state = AppState(previewComputer, loading = false, selectedBot = dex.id, bots = listOf(dex, miles),
             connection = LinkState.Ready(HostRoute.Direct), actualConnection = LinkState.Ready(HostRoute.Direct),
-            historyComplete = setOf(bot.id), entries = listOf(entry))
+            historyComplete = setOf(dex.id), entries = listOf(exchange("bot-message", 1, dex.id, miles.id, dex.id, request, answer)))
         compose.runOnUiThread { compose.activity.setContent { Hosted { ChatScreen(state, store, {}) } } }
-        val label = compose.onNodeWithText("Message from Miles").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
-        val message = compose.onNodeWithText(body).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
-        assertTrue(label.bottom <= message.top)
-        compose.onNodeWithText(detail).assertDoesNotExist()
-        compose.onNodeWithText(heading).assertDoesNotExist()
+        // The chat keeps one line (iOS `BotMessageRow`), not the messages themselves.
+        compose.onNodeWithContentDescription("Message from Miles").assertIsDisplayed()
+        compose.onNodeWithText(request).assertDoesNotExist()
         if (InstrumentationRegistry.getArguments().getString("layoutSnapshots") == "true") {
             val bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
             File(compose.activity.cacheDir, "bot-message-preview.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
         }
+        compose.onNodeWithContentDescription("Message from Miles").performClick()
+        // The conversation, oldest first: Miles's request, then Dex's reply.
+        compose.waitUntil(5_000) { compose.onAllNodesWithText(answer).fetchSemanticsNodes().isNotEmpty() }
+        compose.waitForIdle() // the sheet has finished sliding up
+        compose.onNodeWithContentDescription("Dex and Miles").assertIsDisplayed()
+        val asked = compose.onNodeWithText(request).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        val replied = compose.onNodeWithText(answer).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        assertTrue(asked.bottom <= replied.top)
     }
 
-    @Test fun botRepliesAppearBelowTheRequestInSeparateBubbles() {
+    @Test fun consecutiveExchangesWithOneBotAreOneLineThatSaysWhenOneFailed() {
         assumeTrue(Build.PRODUCT.startsWith("sdk"))
         val store = previewStore()
-        val bot = Bot("reply-preview", "Dex")
-        val body = "Investigate the connection error."
-        val heading = "Request from Miles: $body"
-        val answer = "The caller cancelled while audio was connecting."
-        val entry = Entry("bot-reply", 1, bot.id, rev = 1, kind = "notice", data = buildJsonObject {
-            put("text", "$heading\nReply from Dex:\n$answer"); put("heading", heading)
-            put("delegationId", "request"); put("status", "completed")
-        })
-        val state = AppState(previewComputer, loading = false, selectedBot = bot.id, bots = listOf(bot),
+        val dex = Bot("exchange-run-preview", "Dex"); val miles = Bot("miles-run-preview", "Miles")
+        val state = AppState(previewComputer, loading = false, selectedBot = dex.id, bots = listOf(dex, miles),
             connection = LinkState.Ready(HostRoute.Direct), actualConnection = LinkState.Ready(HostRoute.Direct),
-            historyComplete = setOf(bot.id), entries = listOf(entry))
+            historyComplete = setOf(dex.id), entries = listOf(
+                exchange("asked", 1, dex.id, dex.id, miles.id, "Review the fix.", "Looks good."),
+                exchange("failed", 2, dex.id, dex.id, miles.id, "Ship it.", status = "failed", detail = "Recipient stopped.")))
         compose.runOnUiThread { compose.activity.setContent { Hosted { ChatScreen(state, store, {}) } } }
-        val request = compose.onNodeWithText(body).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
-        val attribution = compose.onNodeWithText("Reply from Dex").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
-        val reply = compose.onNodeWithText(answer).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
-        assertTrue(request.bottom <= attribution.top)
-        assertTrue(attribution.bottom <= reply.top)
-        val fullReply = Entry("full-reply", 2, bot.id, rev = 2, kind = "agent", data = buildJsonObject {
-            put("text", answer); put("final", true)
-        })
-        compose.runOnUiThread { compose.activity.setContent {
-            Hosted { ChatScreen(state.copy(entries = listOf(entry, fullReply)), store, {}) }
-        } }
-        compose.onAllNodesWithText("Reply from Dex").assertCountEquals(1)
-        compose.onAllNodesWithText(answer).assertCountEquals(1)
-        compose.onNode(hasText(answer) and hasClickAction()).performTouchInput { longClick(Offset(4f, 4f)) }
-        compose.onNodeWithText("Reply").assertIsDisplayed()
-        compose.onNodeWithText("Show what it did").assertIsDisplayed()
-        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
-        if (InstrumentationRegistry.getArguments().getString("layoutSnapshots") == "true") {
-            val bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
-            File(compose.activity.cacheDir, "bot-reply-preview.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
-        }
+        compose.onNodeWithContentDescription("2 messages with Miles, failed").assertIsDisplayed()
+        compose.onNodeWithText("Review the fix.").assertDoesNotExist()
+        compose.onNodeWithText("Recipient stopped.").assertDoesNotExist()
     }
 
-    @Test fun aShortConversationStaysNearItsComposerAndRetainsContextActions() {
+    @Test fun aShortConversationStartsAtTheTopAndRetainsContextActions() {
         assumeTrue(Build.PRODUCT.startsWith("sdk"))
         val store = previewStore()
         val bot = Bot("layout-preview", "Scout", avatarColor = "green", avatarShape = "cloud")
@@ -106,14 +94,16 @@ class ChatLayoutTest {
         val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
         assertTrue(userBounds.left > agentBounds.left)
         assertTrue(userBounds.right > agentBounds.right)
-        assertTrue(userBounds.top > root.height / 2)
+        // Like the iPhone's list, a conversation shorter than the screen starts at the top.
+        assertTrue(userBounds.top < root.height / 2)
         compose.onNodeWithContentDescription("Add files").assertIsDisplayed()
         compose.onNodeWithContentDescription("Call").assertIsDisplayed()
         if (InstrumentationRegistry.getArguments().getString("layoutSnapshots") == "true") {
             val bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
             File(compose.activity.cacheDir, "layout-chat-preview.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
         }
-        user.performTouchInput { longClick(Offset(4f, 4f)) }
+        // Held in its middle: the rounded corners are outside the bubble.
+        user.performTouchInput { longClick() }
         compose.onNodeWithText("Reply").assertIsDisplayed()
         compose.onNodeWithContentDescription("👍").assertIsDisplayed()
         compose.onNodeWithText("Copy").assertIsDisplayed()

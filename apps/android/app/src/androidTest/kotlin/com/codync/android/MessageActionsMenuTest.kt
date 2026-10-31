@@ -69,7 +69,8 @@ class MessageActionsMenuTest {
         })
         val state = AppState(previewComputer, loading = false, selectedBot = bot.id, bots = listOf(bot), connection = LinkState.Ready(HostRoute.Direct),
             historyComplete = setOf(bot.id), entries = listOf(reply, quoted))
-        compose.setContent { Hosted { ChatScreen(state, store, {}) } }
+        var shown by mutableStateOf(state)
+        compose.setContent { Hosted { ChatScreen(shown, store, {}) } }
         // The sent reply shows what it quotes.
         compose.onNodeWithText("“$text”").assertIsDisplayed()
         compose.onNode(hasText(text) and hasClickAction()).performTouchInput { longClick() }
@@ -80,7 +81,7 @@ class MessageActionsMenuTest {
         compose.onAllNodesWithText("“$text”").assertCountEquals(1)
         compose.onNodeWithContentDescription("Cancel reply").assertDoesNotExist()
         // An older host can't quote: no Reply.
-        compose.setContent { Hosted { ChatScreen(state.copy(hello = buildJsonObject { put("version", "2.20.0") }), store, {}) } }
+        compose.runOnUiThread { shown = state.copy(hello = buildJsonObject { put("version", "2.20.0") }) }
         compose.onNode(hasText(text) and hasClickAction()).performTouchInput { longClick() }
         compose.onNodeWithText("Copy").assertIsDisplayed()
         compose.onNodeWithText("Reply").assertDoesNotExist()
