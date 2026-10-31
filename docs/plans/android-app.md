@@ -127,8 +127,8 @@ the Dynamic Island) with its feature graphic, per language.
 The host accepts Android pairing (older hosts refuse it, and the app asks to update
 Codync on the computer) and counts Android event streams as connected phones, so
 pushes are held while one is open. The cloud accepts Android device records through
-the `0004_android_devices.sql` migration, applied to dev on 2026-11-01. Main gets it right after the next `dev` → `main`
-merge, together with that release's cloud deploy ([migration log](../guides/environments-and-deployment.md#migration-log)).
+the `0004_android_devices.sql` migration, applied to dev on 2026-11-01. Main gets it only when it is applied there by hand
+(`wrangler d1 migrations apply codync --remote` after a restore point; the merge and `deploy:main` run no migrations, [migration log](../guides/environments-and-deployment.md#migration-log)).
 Until then, signed-in Android phones can't register with the production account. The push Worker needs the matching Firebase
 service account as an external secret; the client configuration contains no private key.
 

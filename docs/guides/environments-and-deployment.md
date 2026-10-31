@@ -86,7 +86,7 @@ The repository is public, so its whole history counts as published. Last scan: 2
 | `0001_init.sql` | applied | applied | — |
 | `0002_windows_computers.sql` | 2026-10-07 | 2026-10-07 | dev `00000b79-00000000-000050fc-e6cb8fa431592b1c3d7824f3cf64afb9`, main `0000041d-0000085c-000050fc-fda9fcdf91e3498c08fa7c332a989e24` |
 | `0003_desktop_devices.sql` | 2026-10-07 | 2026-10-07 | dev `00000cb2-00000002-000050fd-8600044ac4775783e20c8ff9b4d5fa14`, main `00000420-000012d2-000050fd-12871b6db16548f336c1c9221d28c556` |
-| `0004_android_devices.sql` | 2026-11-01 | with the next `dev` → `main` merge | dev `00003428-00000000-00005115-cc5e0e1311eab7918b2c9470a0e71611` |
+| `0004_android_devices.sql` | 2026-11-01 | not yet: apply by hand (neither the merge nor `deploy:main` runs migrations) | dev `00003428-00000000-00005115-cc5e0e1311eab7918b2c9470a0e71611` |
 
 `0002` lets `computers.platform` be `windows` (Windows hosts register with `std::env::consts::OS`). SQLite can't change a CHECK, so it rebuilds `computers` together with `access_requests` and `grants`, the tables that reference it: dropping a referenced table while foreign keys are enforced would count every referencing row as a violation. Live schemas matched `0001` beforehand; row counts were unchanged afterwards (dev 24 computers, 8 grants, 14 access requests; main 101, 38, 48) with no orphaned rows. A signed `POST /v1/host/register` with `platform: "windows"` returned 200 on both (the probe rows were deleted). Main's Worker answered with the previous version for about 20 seconds after `deploy`.
 

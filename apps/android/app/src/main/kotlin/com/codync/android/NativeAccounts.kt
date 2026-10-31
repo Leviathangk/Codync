@@ -13,11 +13,11 @@ import com.clerk.api.sso.SSOCancellationException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 
@@ -83,7 +83,7 @@ object NativeAccounts {
         Clerk.isInitialized.first { it }
         if (activeUserId() != null) return
         when (val result = Clerk.auth.signInWithTicket(ticket)) {
-            is ClerkResult.Failure -> throw SignInError(SignInFailure.Error, result.errorMessage, result.throwable)
+            is ClerkResult.Failure -> throw signInError(result)
             is ClerkResult.Success -> result.value.createdSessionId?.let { requireSuccess(Clerk.auth.setActive(it)) }
         }
     }

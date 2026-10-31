@@ -4,12 +4,13 @@
 // (iOS: the CODYNC_DEV_SIGN_IN_TICKET launch variable; Android: a file only adb's run-as can write). The main checkout's
 // Codync Dev keeps your own account: there this needs an explicit --name.
 import { spawnSync } from 'node:child_process'
-import { statSync } from 'node:fs'
+import { existsSync, statSync } from 'node:fs'
+import { homedir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { mintTicket } from './dev-account.mjs'
-import { sandboxName } from '../src/shared/dev-sandbox.ts'
+import { SANDBOX_PREFIX, sandboxName } from '../src/shared/dev-sandbox.ts'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
 const { values: flags } = parseArgs({ options: { ios: { type: 'string' }, android: { type: 'string' }, name: { type: 'string' } } })
@@ -31,6 +32,8 @@ if (statSync(join(root, '.git')).isDirectory() && !flags.name) {
   fail("The main checkout's Codync Dev keeps your own account. Run this from a worktree, or name a sandbox with --name <name>.")
 }
 const name = sandboxName(flags.name ?? basename(root))
+// `npm run dev -- --prune` finds a test account through its sandbox folder, so an account is only made for one.
+if (!existsSync(join(homedir(), SANDBOX_PREFIX + name, 'sandbox.json'))) fail(`No sandbox ${name}: start it first with npm run dev.`)
 const account = await mintTicket(name)
 if (!account) fail('No Clerk test key: set CODYNC_CLERK_SECRET_KEY in the main checkout\'s .env.development (see docs/guides/dev-app.md).')
 

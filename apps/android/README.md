@@ -154,7 +154,7 @@ and explicit HTTP links. Vosk/JNA and the checksum-verified English model have
 notices in [voice-manifest.json](app/src/main/assets/licenses/voice-manifest.json).
 That speech prototype does not establish full voice parity.
 
-AndroidX, Compose, CameraX, Glance, WorkManager, Firebase, Play app update / in-app review
+AndroidX, Compose, CameraX, Glance, WorkManager, Firebase, Play app update
 and desugaring artifacts come from Google Maven. Other dependencies use the configured repositories.
 AndroidX native libraries, Vosk and JNA are upstream artifacts; no custom native
 crypto or camera library is introduced. WebRTC comes from the webrtc-sdk build of libwebrtc.
@@ -175,7 +175,7 @@ crypto or camera library is introduced. WebRTC comes from the webrtc-sdk build o
 | Java API desugaring | 2.1.5 | [Android desugaring](https://developer.android.com/studio/write/java11-default-support-table), GPL-2.0 with Classpath Exception; CommonMark runtime support |
 | Clerk Android | 1.1.11 | [Clerk SDK](https://github.com/clerk/clerk-android), MIT; native account sessions and browser/provider authentication |
 | Firebase BOM / Google Services plugin | 34.19.0 / 4.5.0 | [Firebase Android](https://firebase.google.com/support/release-notes/android), Apache-2.0; FID registration and data-only FCM delivery |
-| Play app update / in-app review | 2.1.0 / 2.0.2 | [Play Core](https://developer.android.com/guide/playcore), [Play Core SDK Terms](https://developer.android.com/guide/playcore#license); the update notice and reminder, and the rating invitation |
+| Play app update | 2.1.0 | [Play Core](https://developer.android.com/guide/playcore), [Play Core SDK Terms](https://developer.android.com/guide/playcore#license); the update notice and reminder |
 | WorkManager | 2.12.0 | [AndroidX Work](https://developer.android.com/jetpack/androidx/releases/work), Apache-2.0; bounded background registration retries |
 | Glance | 1.2.0 | [AndroidX Glance](https://developer.android.com/jetpack/androidx/releases/glance), Apache-2.0; responsive native app widgets |
 | CameraX | 1.6.2 | [AndroidX Camera](https://developer.android.com/jetpack/androidx/releases/camera), Apache-2.0; lifecycle-bound preview/analysis, minimum API 23, optional camera permission |
