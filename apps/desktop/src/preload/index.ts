@@ -134,6 +134,7 @@ const bridge: CodyncBridge = {
     openExternal: (url) => ipcRenderer.send('app:openExternal', url),
     copy: (text) => ipcRenderer.send('app:copy', text),
     pickFiles: () => ipcRenderer.invoke('app:pickFiles'),
+    pickExport: () => ipcRenderer.invoke('app:pickExport'),
     readClipboardFiles: () => ipcRenderer.invoke('app:clipboardFiles'),
     setTraySummary: (summary: TraySummary) => ipcRenderer.send('app:traySummary', summary),
     onCommand: (cb: (c: WindowCommand) => void) => listen('app:command', cb),
