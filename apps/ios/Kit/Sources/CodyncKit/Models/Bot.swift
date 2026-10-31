@@ -12,6 +12,7 @@ public struct Bot: Codable, Identifiable, Hashable, Sendable {
     public var description: String
     public var avatarColor: String
     public var avatarShape: String
+    public var customIcon: CustomIcon?
     public var backend: String
     public var command: String?
     public var cwd: String
@@ -34,7 +35,7 @@ public struct Bot: Codable, Identifiable, Hashable, Sendable {
     public var selfFallbacks: Bool?
     public var pinned: Bool
     /// The computer's lead bot: the host makes the first, and the user may pick another (`setLead`) or delete it.
-    /// First in the list, never hidden, and the one a call or shortcut that names no bot talks to.
+    /// Placed in the list like any bot, never hidden, and the one a call or shortcut that names no bot talks to.
     public var lead: Bool = false
     /// Where the user dragged it, lowest first within its `band`; ties sort by recent activity.
     public var position: Int = 0
@@ -91,8 +92,8 @@ public struct Bot: Codable, Identifiable, Hashable, Sendable {
         isWorking && (workingChat ?? id) == chat
     }
     public var needsInput: Bool { status == "needsInput" }
-    /// Its band in the list: the lead, then pinned bots, then the rest. Dragging stays inside a band.
-    public var band: Int { lead ? 0 : pinned ? 1 : 2 }
+    /// Its band in the list: pinned bots, then the rest. Dragging stays inside a band.
+    public var band: Int { pinned ? 0 : 1 }
     public var folderName: String { managedWorkspace ? "Personal workspace" : (cwd as NSString).lastPathComponent }
 }
 
@@ -107,6 +108,7 @@ extension Bot {
         description = try c.decodeIfPresent(String.self, forKey: .description) ?? ""
         avatarColor = try c.decodeIfPresent(String.self, forKey: .avatarColor) ?? "blue"
         avatarShape = try c.decodeIfPresent(String.self, forKey: .avatarShape) ?? "blob"
+        customIcon = try c.decodeIfPresent(CustomIcon.self, forKey: .customIcon)
         backend = try c.decodeIfPresent(String.self, forKey: .backend) ?? "custom"
         command = try c.decodeIfPresent(String.self, forKey: .command)
         cwd = try c.decodeIfPresent(String.self, forKey: .cwd) ?? ""

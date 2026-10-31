@@ -46,7 +46,7 @@ they unfold on release (`BotRoster.tsx`). Click a heading to fold its bots.
 Order and folded sections stay on this device; the iPhone and other computers keep
 independent orders even when signed in to the same account. Filtering a computer out
 does not discard its position. One selected computer gets no heading. Inside each computer,
-the lead bot comes first, then pinned rows, then foldable section headers sorted by name (name,
+the lead bot comes first, then pinned rows, then foldable section headers in device-local order, initially sorted by name (name,
 bot count, and the unread total while folded; folded state saved on this device), then rows in no
 section (under a "Bots" label when there are sections). A row's right-click menu has Move to
 section (not the lead's), a section header's has Rename section and Remove section (both only for
@@ -61,6 +61,8 @@ preferences per account and cloud environment. See [computer ordering](../featur
 The TUI connects to one host at a time, so it keeps its single roster.
 
 ## Platform notes
+
+- **First-run computer access** uses a capsule with one permission per panel, the app icon above it, and directional transitions (disabled with Reduce Motion). GitHub Star is the optional final panel and shares its answer history with the later reminder. macOS has three permission panels; Linux combines capture and input; Windows only shows control availability. Settings and the menu-bar setup keep their permission overview. iOS, Android and the terminal UI continue to show remote permission status and direct people to this desktop setup; they cannot request these desktop OS grants.
 
 - **Local host recovery** uses the Codync character: looking around and bobbing while starting,
   resting for setup, and a still disappointed expression with lowered eyelids and a downturned mouth if the host is missing or
@@ -182,3 +184,7 @@ disabling security checks. Distributed builds still require Developer ID signing
 
 Composer keyboard behavior, animation and durable draft storage, with a host-free
 regression fixture: [composer checks](../guides/composer.md).
+
+Section headings and the unsectioned Bots group also drag up or down within their computer. Alt+Up/Down on a focused heading moves it one place. Dragging folds the groups temporarily; cancelling restores the order, and dropping saves it per computer on this device.
+
+Roster action submenus open beside their parent on hover, click, Enter or Right. They flip left near the window edge; a short hover delay keeps the path into the child stable. Left or Escape returns to the parent. This mouse-specific behavior is desktop-only: iPhone uses its native context menu, Android keeps touch submenus, and the terminal uses keyboard prompts.

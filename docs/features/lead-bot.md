@@ -1,8 +1,8 @@
 # Lead bot
 
-Every computer has at most one lead bot, as Grok Bot has its own bot: the one you come to first. It sits on top of
-the bot list with a star, takes the voice calls and shortcuts that name no bot, and takes initiative instead of
-waiting to be asked. Everything about it lives in the host (`host/src/chat/lead.rs`); the apps only show it.
+Every computer has at most one lead bot, as Grok Bot has its own bot: the one you come to first. It wears a star in
+the bot list, takes the voice calls and shortcuts that name no bot (on the iPhone, the Action button), and takes
+initiative instead of waiting to be asked. Everything about it lives in the host (`host/src/chat/lead.rs`); the apps only show it.
 
 ## What makes it the lead
 
@@ -20,13 +20,12 @@ waiting to be asked. Everything about it lives in the host (`host/src/chat/lead.
 - **Deletable, never hidden.** `deleteBot` works on the lead like on any bot; the computer then has none until the user
   picks one. A lead can't be hidden (`hub::validate`), so the bot the shortcuts call is always in the list.
   Everything else is set up as on any bot: name, avatar, agent and model, folder, connectors, skills, memory, routines.
-- **On top.** Every client sorts the roster in bands: the lead, then pinned bots, then the rest (by the user's order,
-  then recent activity). The lead can't be dragged, and moving another bot never puts it above the lead. Its row
-  shows a gold `star.fill` badge at the avatar’s bottom-right, with unread/approval badges at the top-right.
-  The larger badge in details opens the lead agent role explanation. TUI shows a gold `★` below the avatar;
-  click it or press `I` on the lead to read the same explanation, scroll with arrow keys, and close with `Esc`. Its
-  menus have no Pin, Move to section or Hide, and it shows in no roster section (TUI: `p` and `w` say why). Every
-  other bot's menu has **Make lead agent** (`star`; TUI: `*`), groups excepted.
+- **Placed like any bot.** The lead has no place of its own in the roster: the user drags, pins and moves it to a
+  section like any other bot (a host-made lead starts where any new bot does). Its row shows a gold `star.fill` badge
+  at the avatar’s bottom-right, with unread/approval badges at the top-right. The larger badge in details opens the
+  lead agent role explanation. TUI shows a gold `★` below the avatar; click it or press `I` on the lead to read the
+  same explanation, scroll with arrow keys, and close with `Esc`. Its menus have no Hide. Every other bot's menu has
+  **Make lead agent** (`star`; TUI: `*`), groups excepted.
 
 ## Initiative
 
@@ -55,16 +54,18 @@ waiting to be asked. Everything about it lives in the host (`host/src/chat/lead.
 
 ## Shortcuts
 
-On the iPhone, **Open Live Mode**'s Bot is optional: without one it calls the lead of the first computer, in the
-user's computer order, that has one, and Siri's "Talk to Codync" does the same: it follows the lead the user picks.
-With no lead (deleted, or not synced yet) it asks which bot. The Bot picker lists leads first. See
-[iOS Shortcuts](ios-shortcuts.md). The desktop's voice input shortcut goes to the lead when no chat is open, or the
+On the iPhone, **Open Live Mode**'s Bot is optional (it's what the Action button usually runs): without one it calls a
+lead, and Siri's "Talk to Codync" does the same. Each computer may have its own lead; with more than one, Settings >
+Shortcuts > *Lead to call* picks whose (`SharedStore.Context.shortcutLeadComputer`, kept on this iPhone). Automatic,
+and a pick whose lead is gone, call the lead of the first computer, in the user's computer order, that has one. With
+no lead anywhere (deleted, or not synced yet) it asks which bot. The Bot picker lists leads first. See
+[iOS Shortcuts](ios-shortcuts.md). Android has no Siri, Shortcuts or Action button, so it has no such setting. The desktop's voice input shortcut goes to the lead when no chat is open, or the
 top bot where no computer has one.
 
 ## Compatibility
 
-Additive: `lead`, `callStarted` and `setLead` are new. An older app shows the lead as an ordinary bot and gets an error
-if it tries to hide it. The apps offer Make lead agent, and Delete on the lead, only for a host from 2.33.0, which
+Additive: `lead`, `callStarted` and `setLead` are new. An older app keeps the lead on top of its list and gets an error
+if it tries to hide it; where the user dragged it shows from the next app. The apps offer Make lead agent, and Delete on the lead, only for a host from 2.33.0, which
 has `setLead` and lets the lead go; an older host refused both (the terminal UI's `*`, and `x` on the lead, say to
 update it). Every app sends `callStarted` only for a bot marked
 lead, so an older host (which has none) never gets it. No `minApp` / `minHost` change.

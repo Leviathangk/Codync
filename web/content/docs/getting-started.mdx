@@ -2,7 +2,7 @@ Codync has two parts. The **host** (`codync-host`) is a small background service
 
 ## What you need
 
-- A Mac (Apple silicon or Intel), a Windows PC (x64 or ARM64), or a Linux machine (x86_64 or arm64).
+- A Mac (Apple silicon or Intel), a Windows PC (x64), or a Linux machine (x86_64 or arm64).
 - At least one coding agent on that computer, such as Claude Code or Codex. You can also install one from Codync later. See [Agents](/docs/agents).
 - Optional: an iPhone with iOS 26 or later. You can also use only the desktop app or the terminal UI.
 
@@ -22,7 +22,7 @@ Open Codync. The app includes the host and sets it up as a background service th
 
 ### Windows
 
-Download [codync-windows-x64.exe](https://github.com/leepokai/Codync/releases/latest/download/codync-windows-x64.exe) for an Intel or AMD PC, or [codync-windows-arm64.exe](https://github.com/leepokai/Codync/releases/latest/download/codync-windows-arm64.exe) for an ARM64 PC running Windows 11, and run it. It installs for your user only, and the host starts each time you sign in to Windows. The installer isn't code-signed yet, so SmartScreen asks you to confirm once: choose **More info**, then **Run anyway**.
+Download [codync-windows-x64.exe](https://github.com/leepokai/Codync/releases/latest/download/codync-windows-x64.exe) and run it. It installs for your user only, and the host starts each time you sign in to Windows. The installer isn't code-signed yet, so SmartScreen asks you to confirm once: choose **More info**, then **Run anyway**.
 
 Codync shows a tray icon. Left-click it to open the chat window, right-click it for the menu. Remote screen isn't available on Windows yet.
 
@@ -42,6 +42,10 @@ You can also install the host with Homebrew (`brew install leepokai/codync/codyn
 ### The first launch of the desktop app
 
 The app first asks about an account. Signing in with Apple or Google is optional. Choose **Continue on this Mac** (or **Continue on this computer**) to go on without one. It then offers **Computer access**, which bots need only to use the screen; choose **Set up later** to skip it. See [Computer use](/docs/computer-use).
+
+Setup also offers an optional GitHub star. If you skip it, the desktop app can remind you once after seven days. That reminder has two actions: **Star on GitHub** opens the repository, and **Not now** dismisses it. You can also dismiss it by clicking outside the card or pressing Escape. Opening the repository or dismissing this reminder ends further reminders on that computer.
+
+The computer menu shows a device icon beside each name, helping you distinguish a laptop, Mac mini, or Linux computer. Connection status appears alongside the name (on a separate secondary line on desktop and Android).
 
 Press **⌘R** on macOS or **Ctrl+R** on Windows and Linux to refresh your computers. A small spinning “Loading…” indicator appears while Codync reconnects and updates the computer list. Repeated presses wait for the current refresh to finish.
 
@@ -87,7 +91,7 @@ If you signed in to the same account on the computer and the phone, the phone ca
 
 ## 4. Meet your lead bot
 
-Your computer already has a bot: your lead bot, **Codync**, at the top of the list with a star. Message it, or call it and it speaks first. See [Your lead bot](/docs/bots#your-lead-bot).
+Your computer already has a bot: your lead bot, **Codync**, with a star on its avatar. Message it, or call it and it speaks first. See [Your lead bot](/docs/bots#your-lead-bot).
 
 You can make more bots, for other folders or agents, whenever you like:
 

@@ -1,8 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
-import { DiscordLogo, GithubLogo } from "@phosphor-icons/react/ssr";
+import { Coffee, DiscordLogo, GithubLogo } from "@phosphor-icons/react/ssr";
 import DownloadButton from "./download-button";
-import { DISCORD, EMAIL, GITHUB } from "../links";
+import { DISCORD, EMAIL, GITHUB, KO_FI } from "../links";
 
 const nav: [href: string, label: string][] = [
   ["/#product", "Product"],
@@ -29,6 +29,15 @@ export function SiteHeader() {
           ))}
         </div>
         <div className="flex items-center justify-end gap-2">
+          <a
+            href={KO_FI}
+            aria-label="Buy me a coffee"
+            title="Buy me a coffee"
+            // Hidden on the narrowest phones, where it would push the header past the screen; the footer keeps the link.
+            className="hidden rounded-full p-2 text-neutral-400 transition hover:text-neutral-100 min-[360px]:block"
+          >
+            <Coffee size={20} />
+          </a>
           <a
             href={DISCORD}
             aria-label="Codync on Discord"
@@ -62,6 +71,7 @@ const footerLinks: [label: string, href: string][] = [
   ["Terms", "/terms"],
   ["Privacy", "/privacy"],
   ["Discord", DISCORD],
+  ["Ko-fi", KO_FI],
   ["Contact", `mailto:${EMAIL}`],
 ];
 

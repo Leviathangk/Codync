@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import type { Bot } from '@shared/models'
 import type { BotStore } from '../store/bot-store'
-import type { ActionItem } from './PanelMenus'
+import type { ActionItem } from './DesktopActionMenu'
 import { moveToSectionItems, sectionHeaderItems, type SectionNaming } from './section-menus.ts'
 
 /** A computer's store as the menus read it (`archived` is hidden, its section still counts), logging what they ask of it. */
@@ -56,9 +56,9 @@ test('a header renames its section from its name, or removes it', () => {
   assert.deepEqual(calls, [['rename', 'Jobs'], ['rename', null]])
 })
 
-test('the lead gets no Move to section: it stays on top, outside sections', () => {
+test('the lead moves to a section like any bot', () => {
   const { store, bot } = computer()
-  assert.deepEqual(moveToSectionItems({ ...bot('work'), lead: true }, store, () => {}), [])
+  assert.equal(moveToSectionItems({ ...bot('work'), lead: true }, store, () => {}).length, 1)
 })
 
 test('a host without sections gets no section menus', () => {

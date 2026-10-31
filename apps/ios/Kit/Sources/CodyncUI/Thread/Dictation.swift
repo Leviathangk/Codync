@@ -47,8 +47,9 @@ final class Dictation {
     private(set) var startedAt = Date.now
     /// The microphone's level while listening, 0…1.
     private(set) var level: Float = 0
-    /// Why the last dictation ended early (no key, no network), until the next.
+    /// Why the last dictation ended early (no network or microphone access), until the next.
     var failure: String?
+    var needsKey = false
     @ObservationIgnored private lazy var engine = AVAudioEngine()
     @ObservationIgnored private var request: SFSpeechAudioBufferRecognitionRequest?
     @ObservationIgnored private var task: SFSpeechRecognitionTask?
@@ -89,6 +90,7 @@ final class Dictation {
     func start(after draft: String, model: BotStore, edit: @escaping ((String) -> String) -> Void) async {
         guard !listening, !transcribing else { return }
         failure = nil
+        needsKey = false
         generation += 1
         before = draft
         if let provider = service.picked() {
@@ -170,7 +172,7 @@ final class Dictation {
             let hasKey = try await service.hasKey(provider, model)
             guard generation == self.generation else { return }
             guard hasKey else {
-                failure = "Add your \(provider.name) key in Voice chat settings to dictate with it."
+                needsKey = true
                 return
             }
         } catch {

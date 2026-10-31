@@ -1,4 +1,5 @@
 import { isBelow } from '../../shared/compat.ts'
+import { orderedSections } from './roster-section-order.ts'
 import { rosterBand } from './computer-roster.ts'
 
 /** The first host with roster sections. */
@@ -9,9 +10,8 @@ export function hostHasSections(version: string): boolean {
   return !isBelow(version, ROSTER_SECTIONS_HOST)
 }
 
-/** What placing a bot in the roster reads: lead, its pin, the section the user put it in, its unread count. */
+/** What placing a bot in the roster reads: its pin, the section the user put it in, its unread count. */
 interface Placed {
-  lead: boolean
   pinned: boolean
   section?: string
   unread: number
@@ -23,26 +23,28 @@ export type RosterLine<T> =
   | { kind: 'section'; name: string; count: number; unread: number; folded: boolean; items: T[] }
   | { kind: 'label' }
 
-/** The lead and pinned bots stay on top, outside sections. */
-const onTop = (bot: Omit<Placed, 'unread' | 'section'>) => bot.lead || bot.pinned
-
 /**
- * A computer's roster (already in roster order, hidden bots left out) as lines: the lead and pinned
- * rows, then each section by name with its rows, then rows without a section, under a "Bots" label
- * when there are sections. The lead and a pinned bot show only on top. A folded section still holds
- * its rows, so its fold can animate.
+ * A computer's roster (already in roster order, hidden bots left out) as lines: the pinned rows, then
+ * each section by name with its rows, then rows without a section, under a "Bots" label when there are
+ * sections. A pinned bot shows only on top. A folded section still holds its rows, so its fold can
+ * animate.
  */
-export function rosterLines<T extends { bot: Placed }>(items: T[], folded: readonly string[]): RosterLine<T>[] {
+export function rosterLines<T extends { bot: Placed }>(items: T[], folded: readonly string[], order: readonly string[] = []): RosterLine<T>[] {
   const row = (item: T): RosterLine<T> => ({ kind: 'row', item })
-  const unpinned = items.filter((item) => !onTop(item.bot))
-  const sections = sectionNames(unpinned.map((item) => item.bot)).map((name): RosterLine<T> => {
-    const rows = unpinned.filter((item) => item.bot.section === name)
-    const unread = rows.reduce((sum, item) => sum + item.bot.unread, 0)
-    return { kind: 'section', name, count: rows.length, unread, folded: folded.includes(name), items: rows }
+  const groups = rosterGroups(items, folded, order)
+  const labeled = groups.some((group) => group.name !== '')
+  return [...items.filter((item) => item.bot.pinned).map(row), ...groups.flatMap((group): RosterLine<T>[] =>
+    group.name !== '' ? [group] : [...(labeled ? [{ kind: 'label' } as const] : []), ...group.items.map(row)])]
+}
+
+/** The same whole groups for rendering, keyboard navigation, dragging, and renaming. */
+export function rosterGroups<T extends { bot: Placed }>(items: T[], folded: readonly string[], order: readonly string[] = []): Extract<RosterLine<T>, { kind: 'section' }>[] {
+  const unpinned = items.filter((item) => !item.bot.pinned)
+  const names = [...sectionNames(unpinned.map((item) => item.bot)), ...(unpinned.some((item) => !item.bot.section) ? [''] : [])]
+  return orderedSections(names, order).map((name) => {
+    const rows = unpinned.filter((item) => (item.bot.section ?? '') === name)
+    return { kind: 'section', name, count: rows.length, unread: rows.reduce((sum, item) => sum + item.bot.unread, 0), folded: name !== '' && folded.includes(name), items: rows }
   })
-  const loose = unpinned.filter((item) => !item.bot.section).map(row)
-  const label: RosterLine<T>[] = sections.length && loose.length ? [{ kind: 'label' }] : []
-  return [...items.filter((item) => onTop(item.bot)).map(row), ...sections, ...label, ...loose]
 }
 
 /** The rows on screen, top to bottom: a folded section's rows are left out. */
@@ -50,12 +52,12 @@ export function shownRows<T>(lines: RosterLine<T>[]): T[] {
   return lines.flatMap((line) => (line.kind === 'row' ? [line.item] : line.kind === 'label' || line.folded ? [] : line.items))
 }
 
-/** The section a bot shows in: none for the lead and pinned bots, which stay on top (terminal `Bot::shown_section`). */
+/** The section a bot shows in: none for pinned bots, which stay on top (terminal `Bot::shown_section`). */
 export function shownSection(bot: Omit<Placed, 'unread'>): string | undefined {
-  return onTop(bot) ? undefined : bot.section || undefined
+  return bot.pinned ? undefined : bot.section || undefined
 }
 
-/** Whether a drag (or Alt+↑/↓) may move one bot past another: the same band (lead, pinned, the rest) and the same section shown. */
+/** Whether a drag (or Alt+↑/↓) may move one bot past another: the same band (pinned, the rest) and the same section shown. */
 export function sameRosterGroup(a: Omit<Placed, 'unread'>, b: Omit<Placed, 'unread'>): boolean {
   return rosterBand(a) === rosterBand(b) && shownSection(a) === shownSection(b)
 }

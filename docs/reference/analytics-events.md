@@ -55,7 +55,7 @@ host answers and sends it once the host is up.
 | `phone_connected` | host | A paired phone connects, at most once per phone per UTC day | `platform` |
 | `notifications_answered` | iOS, Android | The system notification prompt was answered | `granted`, `source` (`settings`/`widgets`/`automatic`) |
 | `notification_opened` | iOS, Android | A Codync notification was tapped | `kind` (`done`/`needs_input`/`failed`) |
-| `star_prompt_answered` | host `track` (desktop) | The GitHub star sheet was answered or closed | `ask` (`first`/`second`), `starred` |
+| `star_prompt_answered` | host `track` (desktop) | The GitHub star setup invitation or reminder was answered or closed | `ask` (`first`/`second`), `starred` |
 | `link_opened` | host `track` (desktop), iOS, Android | An outbound link was opened (`install_command`: an install command copied) | `link` (`github`/`docs`/`issues`/`discord`/`app_store`/`demo`/`tailscale`/`privacy`/`support`/`install_command`/`product_hunt`) |
 
 ## Using Codync
@@ -101,6 +101,7 @@ host answers and sends it once the host is up.
 | `host_update_installed` | host | `installHostUpdate` | — |
 | `network_joined` | host | `networkCreate` / `networkJoin`: the computer is in a network of the user's computers | `via` (`create`/`invite`), never a name, invite or connector address |
 | `network_changed` | host | `networkInvite` / `networkPromote` / `networkRemove` / `networkRecover` / `setNetworkRules` / `networkLeave` | `action` (`invite`/`promote`/`remove`/`recover`/`rules`/`leave`), never a computer's name, the invite, the recovery code or a rule |
+| `network_failed` | host | A network step failed: a saved network didn't start with the host, a bot's letter to another computer didn't go (refused, or no such computer; one queued for a computer that's away isn't a failure), a request's outcome didn't go back, a letter from another computer couldn't be taken in, or a `network*` call failed | `stage` (`start`/`send`/`reply`/`receive`/`action`); for `action`, the call's own `via` or `action` as on `network_joined` / `network_changed`; never the error's text, a name or an address |
 
 ## Screens
 
@@ -147,7 +148,7 @@ The *Onboarding & conversion* dashboard in PostHog reads these steps, each per `
 codync.dev counts visits without cookies or anything stored on the visitor's device
 (posthog-js `cookieless_mode: 'always'`, which needs the project's *cookieless server hash mode*;
 without it PostHog drops these events): `$pageview`, `download_clicked` (`platform`:
-`mac`/`windows`/`linux`/`ios`; `linux` and the Homebrew `mac` are copies of the install command),
+`mac`/`windows`/`linux`/`ios`; `linux` counts the Linux download links (x86_64 and arm64) and copies of the install command; the Homebrew `mac` is a copy of its command),
 `link_opened` (`link`). One document-level click listener in `web/app/analytics.tsx` reads each
 link's `href`, so a new link is counted without code; the film counts as `demo` when focus moves
 into its frame.

@@ -71,15 +71,15 @@ public struct RosterSection: Sendable {
         current == set ? before : current
     }
 
-    /// A computer's roster (in `BotStore.roster` order) as the rows on screen: the lead and pinned
-    /// bots, then each section by name with its bots (none while folded), then the bots in no
-    /// section, under the "Bots" label when there are sections. The lead and a pinned bot show only
-    /// on top, whatever their section; every part keeps the roster's order.
-    public static func lines<Item>(_ roster: [Item], folded: Set<String>, bot: (Item) -> Bot) -> [RosterSectionLine<Item>] {
+    /// A computer's roster (in `BotStore.roster` order) as the rows on screen: the pinned bots, then
+    /// each section by name with its bots (none while folded), then the bots in no section, under the
+    /// "Bots" label when there are sections. A pinned bot shows only on top, whatever its section;
+    /// every part keeps the roster's order.
+    public static func lines<Item>(_ roster: [Item], folded: Set<String>, order: [String] = [], bot: (Item) -> Bot) -> [RosterSectionLine<Item>] {
         var pinned: [Item] = [], loose: [Item] = [], bySection: [String: [Item]] = [:]
         for item in roster {
             let placed = bot(item)
-            if placed.staysOnTop {
+            if placed.pinned {
                 pinned.append(item)
             } else if let name = placed.section {
                 bySection[name, default: []].append(item)
@@ -88,15 +88,21 @@ public struct RosterSection: Sendable {
             }
         }
         var lines = pinned.map { RosterSectionLine.bot($0) }
-        for name in sorted(bySection.keys) {
+        let available = sorted(bySection.keys) + (loose.isEmpty ? [] : [""])
+        let names = ComputerOrder(ids: order).orderedIDs(available)
+        for name in names {
+            if name.isEmpty {
+                if !bySection.isEmpty { lines.append(.label) }
+                lines += loose.map { RosterSectionLine.bot($0) }
+                continue
+            }
             let items = bySection[name] ?? []
             let isFolded = folded.contains(name)
             let unread = items.reduce(0) { $0 + bot($1).unread }
             lines.append(.header(RosterSection(name: name, count: items.count, unread: unread, folded: isFolded)))
             if !isFolded { lines += items.map { RosterSectionLine.bot($0) } }
         }
-        if !bySection.isEmpty && !loose.isEmpty { lines.append(.label) }
-        return lines + loose.map { RosterSectionLine.bot($0) }
+        return lines
     }
 }
 
@@ -117,13 +123,10 @@ public enum RosterSectionLine<Item> {
 }
 
 extension Bot {
-    /// The lead and pinned bots stay on top, outside sections.
-    var staysOnTop: Bool { lead || pinned }
-
     /// Whether the user can drag this bot past `other`: the same `band`, where pinned bots share
     /// the top whatever their sections; the rest move within their own section, or among the bots
     /// in none.
     func isRosterPeer(of other: Bot) -> Bool {
-        band == other.band && (staysOnTop || section == other.section)
+        band == other.band && (pinned || section == other.section)
     }
 }

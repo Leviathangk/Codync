@@ -252,7 +252,7 @@ impl App {
     }
 
     /// Moves the selected bot one place up (-1) or down (+1) and saves the order, staying in its band
-    /// (`Bot::band`: the lead, pinned bots, the rest). Pinned bots move among all pinned bots (they
+    /// (`Bot::band`: pinned bots, the rest). Pinned bots move among all pinned bots (they
     /// show no sections), the rest only inside their section. Shown at once; the host's bot events
     /// confirm it.
     pub(super) fn reorder_bot(&mut self, d: isize) {
@@ -296,23 +296,23 @@ mod tests {
     #[tokio::test]
     async fn reordering_stays_inside_a_band() {
         let mut app = test_app();
-        let bots = [("l", false, true, 0), ("p", true, false, 0), ("a", false, false, 3), ("b", false, false, 2)];
+        let bots = [("p", true, false, 0), ("a", false, false, 3), ("b", false, false, 2), ("l", false, true, 0)];
         for (id, pinned, lead, last_at) in bots.into_iter().chain([("c", false, false, 1)]) {
             let bot = Bot::parse(&json!({"id": id, "pinned": pinned, "lead": lead, "lastAt": last_at}))
                 .expect("a bot with an id parses");
             app.bots.insert(id.into(), bot);
         }
         let order = |app: &super::App| app.roster().iter().map(|b| b.id.clone()).collect::<Vec<_>>();
-        assert_eq!(order(&app), ["l", "p", "a", "b", "c"], "unarranged: the lead, pinned, then recent activity");
+        assert_eq!(order(&app), ["p", "a", "b", "c", "l"], "unarranged: pinned, then recent activity");
         app.selected = Some("c".into());
         app.reorder_bot(-1);
-        assert_eq!(order(&app), ["l", "p", "a", "c", "b"]);
+        assert_eq!(order(&app), ["p", "a", "c", "b", "l"]);
         app.selected = Some("a".into());
         app.reorder_bot(-1);
-        assert_eq!(order(&app), ["l", "p", "a", "c", "b"], "an unpinned bot can't move above a pinned one");
-        app.selected = Some("p".into());
+        assert_eq!(order(&app), ["p", "a", "c", "b", "l"], "an unpinned bot can't move above a pinned one");
+        app.selected = Some("l".into());
         app.reorder_bot(-1);
-        assert_eq!(order(&app), ["l", "p", "a", "c", "b"], "nor a pinned one above the lead");
+        assert_eq!(order(&app), ["p", "a", "c", "l", "b"], "the lead moves like any bot");
     }
 
     #[tokio::test]

@@ -200,6 +200,8 @@ impl App {
             KeyCode::Char('u') => self.jump(Mark::Unread),
             KeyCode::Char('[') => self.move_bot(-1),
             KeyCode::Char(']') => self.move_bot(1),
+            KeyCode::Up if k.modifiers.contains(KeyModifiers::ALT) => self.move_section(-1),
+            KeyCode::Down if k.modifiers.contains(KeyModifiers::ALT) => self.move_section(1),
             KeyCode::Char('K') => self.reorder_bot(-1),
             KeyCode::Char('J') => self.reorder_bot(1),
             KeyCode::Char(c @ '1'..='9') => {
@@ -328,20 +330,6 @@ impl App {
                     }
                 }
             }
-            KeyCode::Char('S') => {
-                if self.bot().is_some_and(|b| b.group) {
-                    self.flash("A group has no session of its own");
-                } else if let Some(b) = self.bot() {
-                    let c = Confirm {
-                        title: format!("Start a new session for {}?", b.name),
-                        detail: "The agent forgets this conversation's context.".into(),
-                        note: "The transcript stays here.".into(),
-                        button: "New session",
-                        act: ConfirmAct::NewSession(b.id.clone()),
-                    };
-                    self.overlays.push(Overlay::Confirm(c));
-                }
-            }
             KeyCode::Char('*') => self.make_lead(),
             KeyCode::Char('x') => {
                 // An older host keeps its lead.
@@ -367,9 +355,7 @@ impl App {
             }
             KeyCode::Char('e') => self.edit_bot(),
             KeyCode::Char('p') => {
-                if self.bot().is_some_and(|b| b.lead) {
-                    self.flash("The lead bot always stays on top");
-                } else if let Some(b) = self.bot() {
+                if let Some(b) = self.bot() {
                     let (id, pinned) = (b.id.clone(), !b.pinned);
                     self.call("updateBot", json!({"id": id, "pinned": pinned}), After::Nothing);
                 }

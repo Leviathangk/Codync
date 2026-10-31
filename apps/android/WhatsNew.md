@@ -7,12 +7,9 @@ released version's section; a version without one gets the PRs' "What's New: And
 else a generic "Bug fixes and improvements" line. Delete old sections.
 -->
 
-## 2.33.0
-
+## 2.33.6
 ### zh-Hant
-- 任何 Bot 都能當主助理：長按 Bot 選「設為主助理」，它就會排在最上面，通話時也會先開口。
-- 不需要的主助理也可以直接刪除。
+- 「網路」功能換上 Codync Network 自己的圖示，在電腦頁、電腦選單與網路畫面中都一樣。
 
 ### en-US
-- Any bot can be your lead: touch and hold it and choose Make lead agent. It moves to the top and speaks first on calls.
-- You can delete the lead bot if you don't need one.
+- Network now has its own Codync Network icon on the Computers screen, in the computer menu and on the Network screen.

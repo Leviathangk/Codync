@@ -135,11 +135,12 @@ import Testing
     store.stop("b1")
     #expect(await until { await fake.calls.filter { $0 == "stop" }.count == 2 })
     #expect(store.lastError == nil)
-    // A new session can't be told apart from a second one, so it isn't sent twice.
-    await fake.fail("newSession", times: 1)
-    store.newSession("b1")
+    // A call's opening can't be told apart from a second one, so it isn't sent twice.
+    store.bots["b1"]?.lead = true
+    await fake.fail("callStarted", times: 1)
+    store.callStarted("b1", call: "c1")
     #expect(await until { store.lastError != nil })
-    #expect(await fake.calls.filter { $0 == "newSession" }.count == 1)
+    #expect(await fake.calls.filter { $0 == "callStarted" }.count == 1)
 }
 
 @MainActor @Test(.timeLimit(.minutes(1))) func offlineTapReconnectsBeforeGivingUp() async throws {

@@ -39,7 +39,7 @@ pub struct Bot {
     /// Why the agent refused it.
     pub fast_issue: Option<String>,
     pub pinned: bool,
-    /// The computer's lead bot (`chat::lead`): first in the roster, outside sections; `*` makes another bot the lead.
+    /// The computer's lead bot (`chat::lead`), placed like any bot; `*` makes another bot the lead.
     pub lead: bool,
     /// Where the user dragged it (see `App::roster`).
     pub position: i64,
@@ -222,15 +222,9 @@ impl Bot {
         })
     }
 
-    /// Its band in the roster: the lead, then pinned bots, then the rest. Reordering stays inside a band.
+    /// Its band in the roster: pinned bots, then the rest. Reordering stays inside a band.
     pub fn band(&self) -> u8 {
-        if self.lead {
-            0
-        } else if self.pinned {
-            1
-        } else {
-            2
-        }
+        u8::from(!self.pinned)
     }
 
     /// Agent `agent`'s rest, while it lasts at `now`.

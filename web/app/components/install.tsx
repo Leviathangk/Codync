@@ -5,9 +5,7 @@ import CopyCommand from "./copy-command";
 import Eyebrow from "./eyebrow";
 import Halftone from "./halftone";
 import Reveal from "./reveal";
-import { APP_STORE, DMG, WINDOWS, WINDOWS_ARM64 } from "../links";
-
-const INSTALL_SH = "curl -fsSL https://raw.githubusercontent.com/leepokai/Codync/main/packaging/install.sh | sh";
+import { APP_STORE, DMG, INSTALL_SH, LINUX, LINUX_ARM, WINDOWS } from "../links";
 
 export default function Install() {
   return (
@@ -50,10 +48,7 @@ export default function Install() {
               </p>
               <a href={WINDOWS} className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-full bg-neutral-50 px-5 font-medium text-neutral-950 transition hover:bg-white active:scale-[0.98]">
                 <WindowsLogo size={16} weight="fill" />
-                Download for x64 PC
-              </a>
-              <a href={WINDOWS_ARM64} className="mt-3 text-center text-sm text-neutral-400 underline underline-offset-4 transition hover:text-white">
-                Windows 11 ARM64 installer
+                Download for PC
               </a>
             </div>
           </Reveal>
@@ -69,6 +64,16 @@ export default function Install() {
               <div className="mt-5">
                 <CopyCommand command={INSTALL_SH} platform="linux" />
               </div>
+              <p className="mt-4 text-sm text-neutral-500">
+                Desktop app:{" "}
+                <a href={LINUX} className="text-neutral-300 underline underline-offset-4 transition hover:text-white">
+                  x86_64
+                </a>
+                {" · "}
+                <a href={LINUX_ARM} className="text-neutral-300 underline underline-offset-4 transition hover:text-white">
+                  arm64
+                </a>
+              </p>
             </div>
           </Reveal>
 

@@ -27,13 +27,13 @@ import Testing
     #expect(order() == ["p", "a", "c", "b"])
     store.reorder(["c", "p", "a", "b"]) // Dropped above a pinned bot: still listed below it.
     #expect(order() == ["p", "c", "a", "b"])
-    // The lead goes above everything, pinned bots too, and nothing moves above it.
-    store.bots["l"] = try JSONDecoder().decode(Bot.self, from: Data(#"{"id":"l","lead":true,"lastAt":0}"#.utf8))
-    #expect(order() == ["l", "p", "c", "a", "b"])
-    store.move("p", by: -1)
-    #expect(order() == ["l", "p", "c", "a", "b"])
-    store.reorder(["p", "c", "l", "a", "b"])
-    #expect(order().first == "l")
+    // The lead is placed like any bot.
+    store.bots["l"] = try JSONDecoder().decode(Bot.self, from: Data(#"{"id":"l","lead":true,"lastAt":0,"position":9}"#.utf8))
+    #expect(order() == ["p", "c", "a", "b", "l"])
+    store.move("l", by: -1)
+    #expect(order() == ["p", "c", "a", "l", "b"])
+    store.reorder(["p", "l", "c", "a", "b"])
+    #expect(order() == ["p", "l", "c", "a", "b"])
 }
 
 /// A bot as the host sends it.
@@ -85,7 +85,7 @@ private func rosterBot(_ id: String, pinned: Bool = false, lead: Bool = false, h
     #expect(RosterSection.lines([roster[1]], folded: []) { $0 }.count == 2)
 }
 
-@MainActor @Test func theLeadStaysOnTopOutsideItsSection() throws {
+@MainActor @Test func theLeadSitsInItsSectionLikeAnyBot() throws {
     let (store, done) = try rosterStore([
         rosterBot("l", lead: true, section: "Work"), rosterBot("p", pinned: true, lastAt: 3),
         rosterBot("w", section: "Work", lastAt: 2), rosterBot("x", lastAt: 1),
@@ -98,9 +98,9 @@ private func rosterBot(_ id: String, pinned: Bool = false, lead: Bool = false, h
         case let .bot(bot): bot.id
         }
     }
-    #expect(lines == ["l", "p", "▾ Work 1", "w", "BOTS", "x"])
+    #expect(lines == ["p", "▾ Work 2", "w", "l", "BOTS", "x"])
     let lead = try #require(store.bots["l"]), p = try #require(store.bots["p"]), w = try #require(store.bots["w"])
-    #expect(!lead.isRosterPeer(of: p) && !lead.isRosterPeer(of: w))
+    #expect(!lead.isRosterPeer(of: p) && lead.isRosterPeer(of: w))
 }
 
 @Test func sectionsSortTheSameWhateverOrderTheyComeIn() {

@@ -224,6 +224,15 @@ pub fn answered(event: Event, mut p: Map<String, Value>, answer: &Value) -> Opti
     Some(p)
 }
 
+/// What a failed call reports: a `network*` call's failure keeps what it was (`via` or
+/// `action`) as `network_failed` with `stage` `action`; other failures report nothing.
+pub fn failed(event: Event, mut p: Map<String, Value>) -> Option<(Event, Map<String, Value>)> {
+    matches!(event, Event::NetworkJoined | Event::NetworkChanged).then(|| {
+        p.insert("stage".into(), "action".into());
+        (Event::NetworkFailed, p)
+    })
+}
+
 /// The bot settings a patch changes, by name (never their values), sorted.
 fn changed_fields(stored: &BotConfig, patch: &Value) -> Vec<String> {
     let Ok(Value::Object(before)) = serde_json::to_value(stored) else { return vec![] };

@@ -1,6 +1,7 @@
 import Foundation
 
 public enum HostEvent: Sendable {
+    case icons([String: CustomIcon], revision: Int64)
     /// The stream's first event; `network` is nil from hosts before the network view.
     case hello(hostId: String, rev: Int64, usage: Usage, screen: ScreenState?, network: NetworkView?)
     case bot(Bot)
@@ -108,6 +109,9 @@ public struct HostClient: Sendable {
         let d = decoder
         guard let env = try? d.decode(Envelope.self, from: data) else { return nil }
         switch env.type {
+        case "icons":
+            struct Icons: Decodable { var icons: [String: CustomIcon]; var iconsRevision: Int64? }
+            return (try? d.decode(Icons.self, from: data)).map { .icons($0.icons, revision: $0.iconsRevision ?? 0) }
         case "hello":
             let usage = (try? d.decode(UsageWrap.self, from: data))?.usage ?? Usage()
             let screen = (try? d.decode(ScreenWrap.self, from: data))?.screen
@@ -333,10 +337,6 @@ public extension HostClient {
         let _: Empty = try await call("stop", ["botId": botId])
     }
 
-    func newSession(_ botId: String) async throws {
-        let _: Empty = try await call("newSession", ["botId": botId])
-    }
-
     func respondPermission(entryId: String, optionId: String?) async throws {
         struct Body: Encodable { var entryId: String; var optionId: String? }
         let _: Empty = try await call("respondPermission", Body(entryId: entryId, optionId: optionId))
@@ -359,6 +359,12 @@ public extension HostClient {
 
     func usage(refresh: Bool = false) async throws -> Usage {
         try await call("usage", ["refresh": refresh])
+    }
+
+    func selectWorkspace(_ path: String) async throws -> String {
+        struct Reply: Decodable { var path: String }
+        let reply: Reply = try await call("selectWorkspace", ["path": path])
+        return reply.path
     }
 
     func listDirs(_ path: String?) async throws -> DirListing {

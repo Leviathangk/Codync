@@ -25,7 +25,7 @@ struct ComputerSection: View {
                     .transition(.opacity)
             }
         }
-        .padding(.top, 14)
+        .padding(.top, 22)
         .padding(.bottom, 2)
         .padding(.horizontal, -8)
         .accessibilityElement(children: .combine)
@@ -43,34 +43,37 @@ struct ComputerSection: View {
     }
 
     private var heading: some View {
-        HStack(spacing: 6) {
-            ComputerBadge(store.computer, size: 18)
+        HStack(spacing: 4) {
+            ComputerBadge(store.computer, size: 20)
             Text(store.hostName)
-                .font(.footnote.weight(.semibold))
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Palette.secondary)
                 .lineLimit(1)
             // The connection sits at the trailing edge, before the heading's buttons.
             Spacer(minLength: 8)
             Text(L10n.tr(store.statusText))
-                .font(.footnote)
+                .font(.subheadline)
                 .foregroundStyle(store.isOffline && !store.isUpdating ? Palette.warning : Palette.tertiary)
                 .lineLimit(1)
                 .contentTransition(.opacity)
             if store.connection == .online {
-                RouteIcon(route: store.hostRoute, cloud: store.computer.cloud).font(.caption2).foregroundStyle(Palette.tertiary)
+                RouteIcon(route: store.hostRoute, cloud: store.computer.cloud).font(.footnote).foregroundStyle(Palette.tertiary)
             }
             Image(systemName: "chevron.down")
-                .font(.caption.weight(.semibold))
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Palette.tertiary)
                 .rotationEffect(.degrees(collapsed ? -90 : 0))
+                // A finger-sized target: the heading's tap folds, and this spot is where it's aimed.
+                .frame(width: 40, height: 40)
+                .contentShape(Rectangle())
                 .accessibilityHidden(true)
             if let extensions {
-                // After the chevron, as on the desktop; sized like it so the heading stays one light line.
+                // After the chevron, as on the desktop; the glyph is light like it, the target finger-sized.
                 Button(action: extensions) {
                     Image(systemName: "square.grid.2x2")
-                        .font(.caption.weight(.semibold))
+                        .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Palette.secondary)
-                        .frame(width: 28, height: 22)
+                        .frame(width: 44, height: 40)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.borderless)
@@ -78,7 +81,7 @@ struct ComputerSection: View {
                 .help(L10n.tr("Extensions"))
             }
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 4)
         .padding(.horizontal, 8)
         .contentShape(Rectangle())
     }
