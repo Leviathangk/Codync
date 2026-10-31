@@ -71,9 +71,9 @@ development host). Setup shows the Mac and Linux install paths, as on iOS. Pairi
 and one-time codes remain in memory. Account login discovers computers; each
 host must still approve access.
 
-This increment supports **one paired computer per account context**. Remove the
-current pairing in Computer management before pairing another. Multiple-computer
-support is tracked in the checklist. Accounts have separate device keys, mirrors,
+Pair as many computers as you like, as on the iPhone: `AccountStore` keeps one
+`AppStore` (link, mirror, drafts) per computer, and the roster shows a heading per
+computer once there are several. Accounts have separate device keys, mirrors,
 files, image caches and composer drafts.
 
 Remote screen negotiates incremental ICE with hosts and helpers that advertise
