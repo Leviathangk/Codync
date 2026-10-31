@@ -1,6 +1,6 @@
 //! `codync-host cloud`: the relay this computer uses, its registration token and account approval.
 
-use crate::local_call;
+use crate::local_api::local_call;
 use anyhow::Result;
 use serde_json::json;
 
