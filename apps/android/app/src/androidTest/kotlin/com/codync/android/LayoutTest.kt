@@ -1,6 +1,7 @@
 package com.codync.android
 
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.test.platform.app.InstrumentationRegistry
@@ -61,6 +62,22 @@ class LayoutTest {
         compose.mainClock.autoAdvance = true
         compose.onNode(tab("Bots")).assertIsSelected()
         compose.onNodeWithText("Bot 5").assertIsDisplayed()
+    }
+
+    @Test fun aLinkPicksItsTabEvenWhenItArrivesWithTheTabs() = compose.withPreviewAccounts(computer) { accounts ->
+        // A cold start: the link is counted while the account loads, before the tabs first show.
+        val context = mutableStateOf(app.copy(loading = true))
+        compose.setContent { Hosted { CodyncApp(context.value, mapOf(computer.id to state), accounts) } }
+        // The State tab's widget previews never stop moving: step the clock by hand.
+        compose.mainClock.autoAdvance = false
+        compose.runOnUiThread { context.value = app.copy(navigationRequest = 1, navigationPage = LinkPage.Usage) }
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.onNode(tab("State")).assertIsSelected()
+        compose.runOnUiThread { context.value = app.copy(navigationRequest = 2, navigationPage = LinkPage.Computers) }
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.mainClock.autoAdvance = true
+        compose.onNode(tab("Bots")).assertIsSelected()
+        compose.onNodeWithText("Computer management").assertIsDisplayed()
     }
 
     @Test fun largerTextKeepsTheHeaderControlsAndUnreadBadgeAccessible() = compose.withPreviewAccounts(computer) { accounts ->

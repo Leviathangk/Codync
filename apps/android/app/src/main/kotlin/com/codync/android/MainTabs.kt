@@ -19,9 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,7 +34,7 @@ import com.codync.android.core.Bot
 import com.codync.android.core.ReviewCancellation
 import com.codync.android.design.*
 
-private enum class AppTab { Bots, State, Settings }
+internal enum class AppTab { Bots, State, Settings }
 
 /**
  * The system tab bar over Bots, State and Settings, as iOS `RootView.tabs`: every tab stays alive, the bar
@@ -44,17 +42,11 @@ private enum class AppTab { Bots, State, Settings }
  */
 @Composable internal fun MainTabs(app: AccountContext, states: List<AppState>, accounts: AccountStore, account: () -> Unit, manage: () -> Unit,
     usage: () -> Unit, newBot: (String) -> Unit, newGroup: (String) -> Unit, edit: (String, Bot) -> Unit, extensions: (String) -> Unit,
-    covered: Boolean, chat: @Composable (AppState) -> Unit) {
-    var tab by rememberSaveable { mutableStateOf(AppTab.Bots) }
+    tab: AppTab, onTab: (AppTab) -> Unit, covered: Boolean, chat: @Composable (AppState) -> Unit) {
     // The open chat, on whichever computer it lives (one at a time).
     val open = states.firstOrNull { it.selectedBot != null }
     // Opening a bot (notification, widget, link) always lands on the Bots tab.
-    if (open != null && tab != AppTab.Bots) tab = AppTab.Bots
-    // Other links pick the tab as on the iPhone: usage on State, the computers and extensions over Bots; another account starts on Bots.
-    var handledLink by rememberSaveable { mutableIntStateOf(app.navigationRequest) }
-    if (handledLink != app.navigationRequest) { handledLink = app.navigationRequest; tab = if (app.navigationPage == LinkPage.Usage) AppTab.State else AppTab.Bots }
-    var handledAccount by rememberSaveable { mutableIntStateOf(app.generation) }
-    if (handledAccount != app.generation) { handledAccount = app.generation; tab = AppTab.Bots }
+    if (open != null && tab != AppTab.Bots) onTab(AppTab.Bots)
     // Leaving a chat whose answer was read may invite a rating, once the roster has stayed clear (iOS `RootView`).
     val context = LocalContext.current
     ReviewOnReturn(open?.let { "${app.contextId}/${it.computer.id}/${it.selectedBot}" })
@@ -88,7 +80,7 @@ private enum class AppTab { Bots, State, Settings }
                 ScrollEdge(Edge.Bottom, barSpace)
                 GlassTabBar(tab, listOf(TabItem(AppTab.Bots, "Bots", "bubble.left.and.bubble.right.fill", 33.dp),
                     TabItem(AppTab.State, "State", "rectangle.stack.fill"), TabItem(AppTab.Settings, "Settings", "gearshape")),
-                    { tab = it }, Modifier.padding(bottom = maxOf(bottom - 4.dp, 12.dp)))
+                    onTab, Modifier.padding(bottom = maxOf(bottom - 4.dp, 12.dp)))
             }
         }
     }) {

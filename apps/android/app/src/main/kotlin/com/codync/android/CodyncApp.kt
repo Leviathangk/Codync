@@ -56,7 +56,9 @@ private data class Editing<T>(val computerId: String, val draft: T)
     var access by remember { mutableStateOf<CloudComputer?>(null) }
     var editor by remember { mutableStateOf<Editing<BotDraft>?>(null) }
     var groupEditor by remember { mutableStateOf<Editing<GroupDraft>?>(null) }
-    var handledNavigation by rememberSaveable { mutableIntStateOf(app.navigationRequest) }
+    var tab by rememberSaveable { mutableStateOf(AppTab.Bots) }
+    // The last link shown, and the store that counted it: requests count from 0 again in each generation and each process.
+    var handledNavigation by rememberSaveable { mutableStateOf(accounts.activityOwnerId to 0) }
     var handledGeneration by rememberSaveable { mutableIntStateOf(app.generation) }
     fun closeAll() {
         showAccount = false; showComputers = false; showPairing = false; marketplace = null
@@ -64,14 +66,17 @@ private data class Editing<T>(val computerId: String, val draft: T)
     }
     // A new account or a fresh start drops whatever was open for the old one.
     LaunchedEffect(app.generation) { if (handledGeneration != app.generation) { closeAll(); showUsage = false; handledGeneration = app.generation } }
-    // A notification, widget or link: close everything, then maybe show usage, the computers or extensions.
+    // A notification, widget or link: close everything, then pick the tab as the iPhone does (usage on State, the rest over Bots)
+    // and maybe show usage, the computers or extensions.
     LaunchedEffect(app.navigationRequest) {
-        if (handledNavigation != app.navigationRequest) {
+        val handled = handledNavigation.second.takeIf { handledNavigation.first == accounts.activityOwnerId } ?: 0
+        if (handled != app.navigationRequest) {
             closeAll()
+            tab = if (app.navigationPage == LinkPage.Usage) AppTab.State else AppTab.Bots
             showUsage = app.navigationPage == LinkPage.Usage
             showComputers = app.navigationPage == LinkPage.Computers
             if (app.navigationPage == LinkPage.Extensions) marketplace = app.currentComputerId
-            handledNavigation = app.navigationRequest
+            handledNavigation = accounts.activityOwnerId to app.navigationRequest
         }
     }
     val signedIn = app.account.userId != null
@@ -109,7 +114,7 @@ private data class Editing<T>(val computerId: String, val draft: T)
                     }
                     Root.Tabs -> MainTabs(app, states, accounts, account = { showAccount = true }, manage = { showComputers = true }, usage = { showUsage = true },
                         newBot = { creating = NewTarget(group = false, computerId = it) }, newGroup = { creating = NewTarget(group = true, computerId = it) },
-                        edit = edit, extensions = openMarketplace, covered = showAccount || showComputers || showPairing || showUsage ||
+                        edit = edit, extensions = openMarketplace, tab = tab, onTab = { tab = it }, covered = showAccount || showComputers || showPairing || showUsage ||
                             marketplace != null || creating != null || access != null || editor != null || groupEditor != null || app.error != null) { chat ->
                         // A conversation, talking to the computer the bot lives on.
                         accounts.store(chat.computer.id)?.let { store -> ChatScreen(chat, store) { bot -> edit(chat.computer.id, bot) } }

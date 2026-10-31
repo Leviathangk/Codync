@@ -72,9 +72,10 @@ private enum class PickerStage { Closed, Agents, Models, Settings }
     val modelName = if (value.isEmpty()) "Default" else modelChoices.firstOrNull { it.first == value }?.second ?: value
     val levels = modelOptions.mapNotNull { option -> option.values.firstOrNull { it.id == (options[option.id] ?: option.default) }?.name }
     val summary = (listOf(agentName, modelName) + levels + if (fastMode) listOf("Fast") else emptyList()).joinToString(" · ")
+    val unfold = tr(if (stage == PickerStage.Closed) "Collapsed" else "Expanded")
     Column(Modifier.fillMaxWidth().animateContentSize(Motion.layoutSize), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(Modifier.fillMaxWidth().clickable { open(if (stage == PickerStage.Closed) PickerStage.Models else PickerStage.Closed) }
-            .semantics { stateDescription = if (stage == PickerStage.Closed) "Collapsed" else "Expanded" }.padding(vertical = 8.dp),
+            .semantics { stateDescription = unfold }.padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Crossfade(summary, Modifier.weight(1f), animationSpec = Motion.fade(), label = "Agent summary") { text ->
                 Text(text, style = Type.subheadline, color = Palette.text)
