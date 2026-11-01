@@ -24,7 +24,7 @@ data class Computer(
     fun validate() {
         require(RelayCrypto.computerId(signKey.decodeBase64Url(32)) == id) { "This computer's identity changed. Pair it again." }
         boxKey?.decodeBase64Url(32)
-        require(urls.size <= 16 && urls.all(::isDirectUrl)) { "Invalid computer address" }
+        require(urls.size <= MAX_URLS && urls.all(::isDirectUrl)) { "Invalid computer address" }
         require(cloud == null || isCloudUrl(cloud)) { "Invalid cloud address" }
     }
 }
@@ -34,6 +34,12 @@ fun Iterable<Computer>.currentId(last: String?): String? = last?.takeIf { id -> 
 
 @Serializable
 enum class ConnectionRoute { Automatic, CloudflareFirst, DirectOnly }
+
+/** Phones keep at most this many direct addresses; a computer with many networks sends more, best first. */
+internal const val MAX_URLS = 16
+
+/** The direct addresses kept from a computer's list: valid ones, once each, the best [MAX_URLS]. */
+internal fun directUrls(urls: Iterable<String>): List<String> = urls.filter(::isDirectUrl).distinct().take(MAX_URLS)
 
 internal fun isDirectUrl(value: String): Boolean {
     val url = value.toHttpUrlOrNull() ?: return false

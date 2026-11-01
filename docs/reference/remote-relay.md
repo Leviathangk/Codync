@@ -134,7 +134,7 @@ codync://pair?v=3&name=<pct>&id=<computerId>&sk=<signPub>&bk=<boxPub>&code=<pair
 | `id` | 是 | 必須等於 `computerId(sk)`，否則拒絕 |
 | `sk`, `bk` | 是 | host 公鑰 |
 | `code` | 是 | 16 random bytes，b64url；一次性、10 分鐘；host 最多同時 5 組（新的擠掉最舊的） |
-| `urls` | 否 | 直連候選（`service::addresses`）：先 `CODYNC_EXTERNAL_URL` 設的網址（`https://host` 等，只能是 host 根路徑），再 Tailscale，再 LAN（`http://ip:port`）；可為空 |
+| `urls` | 否 | 直連候選（`service::addresses`）：先 `CODYNC_EXTERNAL_URL` 設的網址（`https://host` 等，只能是 host 根路徑），再 Tailscale，再 LAN（`http://ip:port`，略過 Docker、Podman、Kubernetes、libvirt、LXD 的容器橋接介面）；最多 16 個（手機只留前 16 個）；可為空 |
 | `cloud` | 否 | host 使用的 cloud base URL（`https://…`；DEBUG build 另允許 `http://127.0.0.1:*`／`http://localhost:*`）；缺 = host 關閉雲端 |
 | `name` | 否 | 顯示名稱 |
 

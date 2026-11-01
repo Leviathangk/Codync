@@ -64,6 +64,12 @@ class PairingTest {
         assertFails<IllegalArgumentException> { Pairing.parse(link(params + ("urls" to "ftp://host.test") - "cloud"), "codync") }
     }
 
+    @Test fun `a computer with many networks pairs with its best sixteen addresses`() {
+        val urls = (1..30).map { "http://172.${it + 1}.0.1:19222" }
+        val pairing = Pairing.parse(link(params + ("urls" to urls.joinToString(","))), "codync")
+        assertEquals(urls.take(16), pairing.computer.urls)
+    }
+
     @Test fun `strict base64url refuses padding noncanonical bits and wrong lengths`() {
         for (value in listOf("AA=", "AB", "A", "+A", "AA ")) assertFails<IllegalArgumentException> { value.decodeBase64Url() }
         assertFails<IllegalArgumentException> { "AA".decodeBase64Url(32) }
