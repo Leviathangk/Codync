@@ -15,6 +15,7 @@ import { useTr } from '../../lib/use-language'
 import { useStore } from '../../store/context'
 import { MAX_FILE_SIZE, type OutgoingFile } from '../../store/bot-store'
 import { pluginsFor } from '../marketplace/plugins'
+import { pastedFiles, readPicked, type PickedFile } from './composer-files'
 import { composerEnter } from './composer-keyboard'
 import { CommandMenu, useCommandMenu } from './CommandMenu'
 import { ComposerAttachment } from './ComposerAttachment'
@@ -151,7 +152,7 @@ function DestinationComposer({ botId, reply, about, cancelReply, onCall, onInter
   }
   const menu = useCommandMenu(draft, commands, run)
 
-  const append = (incoming: { name: string; data: Uint8Array }[]) => {
+  const append = (incoming: PickedFile[]) => {
     if (!canAttach) return
     const accepted: OutgoingFile[] = []
     for (const f of incoming) {
@@ -208,7 +209,7 @@ function DestinationComposer({ botId, reply, about, cancelReply, onCall, onInter
         onDrop={(e) => {
           if (!canAttach) return
           e.preventDefault()
-          void Promise.all([...e.dataTransfer.files].map(async (f) => ({ name: f.name, data: new Uint8Array(await f.arrayBuffer()) }))).then(append)
+          void readPicked([...e.dataTransfer.files]).then(append)
         }}
       >
         <div className="composer-surface">
@@ -276,10 +277,7 @@ function DestinationComposer({ botId, reply, about, cancelReply, onCall, onInter
                   if (!canAttach) return
                   if (!hasFiles || (types.includes('text/plain') && !e.clipboardData.files.length)) return
                   e.preventDefault()
-                  void window.codync.app.readClipboardFiles().then((picked) => {
-                    if (picked.length) return append(picked)
-                    return Promise.all([...e.clipboardData.files].map(async (f) => ({ name: f.name || `pasted-${Date.now()}.png`, data: new Uint8Array(await f.arrayBuffer()) }))).then(append)
-                  })
+                  void pastedFiles(window.codync.app.readClipboardFiles, [...e.clipboardData.files]).then(append)
                 }}
               />
             </div>

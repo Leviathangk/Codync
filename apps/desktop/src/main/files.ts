@@ -13,7 +13,8 @@ export async function readFiles(paths: string[]) {
   return out
 }
 
-const fileURLFormat = process.platform === 'darwin' ? 'electron application/osclipboard;format="public.file-url"' : 'text/uri-list'
+// Copied files on every platform (macOS's `public.file-url` included): `clipboard.read()` never lists the raw type.
+const fileURLFormat = 'text/uri-list'
 
 /** ⌘V with a copied file or image: the files it holds (the text field alone would paste a name). */
 export async function readClipboardFiles() {
