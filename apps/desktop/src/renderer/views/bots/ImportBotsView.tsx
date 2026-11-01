@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { BotImport, type ImportPlan, type ImportResult } from '../../store/bot-import'
 import type { BotStore } from '../../store/bot-store'
-import { StoreContext, useStore } from '../../store/context'
 import { useModel } from '../../lib/observable'
 import { useTr } from '../../lib/use-language'
 import { Button, CardForm, CardSection, RowLabel, Spinner, Switch } from '../../components/Controls'
@@ -17,22 +16,21 @@ export function ImportBotsSheet({ store, open, onClose, maxHeight }: {
   onClose: () => void
   maxHeight?: number
 }) {
+  // A fresh import each time the sheet opens.
+  const [model, setModel] = useState<BotImport | null>(null)
+  if (open && store && !model) setModel(new BotImport(store))
+  if (!open && model) setModel(null)
+  useModel(model)
+  // The host keeps importing after the sheet closes, so it stays up until the import ends.
   return (
-    <Sheet open={open && !!store} onClose={onClose} maxHeight={maxHeight}>
-      {open && store ? (
-        <StoreContext.Provider value={store}>
-          <ImportBotsView />
-        </StoreContext.Provider>
-      ) : null}
+    <Sheet open={open && !!model} onClose={model?.busy ? () => {} : onClose} maxHeight={maxHeight}>
+      {open && model ? <ImportBotsView model={model} /> : null}
     </Sheet>
   )
 }
 
 /** Bots from another app: the export steps, the bots and group chats in the file, then what came over. */
-function ImportBotsView() {
-  const store = useStore()
-  const [model] = useState(() => new BotImport(store))
-  useModel(model)
+function ImportBotsView({ model }: { model: BotImport }) {
   const step = model.step
 
   return (
@@ -72,7 +70,7 @@ function Review({ model, plan, skipped }: { model: BotImport; plan: ImportPlan; 
     <CardForm>
       <CardSection title="Bots">
         {plan.bots.map((bot) => (
-          <Switch key={bot.key} on={model.picked(bot.key)} onChange={() => model.toggle(bot.key)}>
+          <Switch key={bot.key} on={model.picked('bot', bot.key)} onChange={() => model.toggle('bot', bot.key)}>
             <RowLabel label={bot.name} detail={summary(tr, bot.skills.length, bot.routines.length, bot.memories.length, bot.files !== null)} />
           </Switch>
         ))}
@@ -80,7 +78,7 @@ function Review({ model, plan, skipped }: { model: BotImport; plan: ImportPlan; 
       {plan.groups.length ? (
         <CardSection title="Group chats">
           {plan.groups.map((group) => (
-            <Switch key={group.key} on={model.picked(group.key) && model.groupAvailable(group.members)} disabled={!model.groupAvailable(group.members)} onChange={() => model.toggle(group.key)}>
+            <Switch key={group.key} on={model.picked('group', group.key) && model.groupAvailable(group.members)} disabled={!model.groupAvailable(group.members)} onChange={() => model.toggle('group', group.key)}>
               <RowLabel label={group.name} detail={members(plan, group.members)} />
             </Switch>
           ))}
@@ -123,7 +121,7 @@ function Footer({ model }: { model: BotImport }) {
         <Button onClick={dismiss}>Done</Button>
       ) : (
         <>
-          <Button kind="secondary" onClick={dismiss}>Cancel</Button>
+          <Button kind="secondary" onClick={dismiss} disabled={model.busy}>Cancel</Button>
           {step.kind === 'start' ? <Button onClick={() => void model.choose()} disabled={model.busy}>Choose file…</Button> : null}
           {step.kind === 'review' ? <Button onClick={() => void model.importPicked()} disabled={!model.canImport}>Import</Button> : null}
         </>

@@ -12,8 +12,8 @@ calling the API; remote clients cannot make the host read a local path.
 Agents keep their bundled logos: the host rejects any other target, and the cleanup loop
 removes icons that 2.33.2–2.33.6 saved for agents. Their R2 slot is deleted when the cloud
 allows it; the local entry goes either way (the slot is overwritten when reused). Clients from
-2.33.2–2.33.6 still show an agent Custom icon card, whose changes fail with "Only bots have
-custom icons"; that is accepted without raising `MIN_APP`, since nothing else breaks.
+2.33.2–2.33.6 still show an agent Custom icon card, whose changes would fail with "Only bots have
+custom icons", so 2.34.0 raises `MIN_APP` to 2.34.0 ([floor history](../reference/compatibility.md#floor-history)).
 
 ## Limits and validation
 
