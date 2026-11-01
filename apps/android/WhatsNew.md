@@ -7,11 +7,9 @@ released version's section; a version without one gets the PRs' "What's New: And
 else a generic "Bug fixes and improvements" line. Delete old sections.
 -->
 
-## 2.34.1
+## 2.34.2
 ### zh-Hant
-- 「擴充套件」清單捲動時，上下邊緣的項目會柔和地模糊淡出。
-- 電腦選單可以連續勾選多台電腦，選完才關閉；移除了「只顯示」子選單。
+- 有很多 Docker 或虛擬機網路的電腦，現在也能配對與連線，不會再顯示配對碼已損毀。
 
 ### en-US
-- Extensions lists now blur and fade softly at their edges as you scroll.
-- The computer menu stays open while you pick several computers; the Show only submenu is gone.
+- Computers with many Docker or virtual machine networks now pair and connect, instead of reporting a damaged pairing code.
