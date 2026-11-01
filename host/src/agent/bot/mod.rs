@@ -352,7 +352,11 @@ impl Actor {
                 Some(done) = done_rx.recv() => {
                     // Updates sent before the prompt response are already queued; apply them first.
                     while let Some(inc) = self.conn.as_mut().and_then(|c| c.rx.try_recv().ok()) {
-                        self.on_incoming(Some(inc)).await;
+                        match inc {
+                            // No agent ends a turn it waits on: a request queued here is for work after it.
+                            Incoming::Request { id, method, params } => self.answer_outside_turn(id, &method, &params).await,
+                            inc => self.on_incoming(Some(inc)).await,
+                        }
                     }
                     if let Err(error) = &done && self.fall_back(error, &done_tx).await {
                         continue;
