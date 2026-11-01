@@ -15,7 +15,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
@@ -45,7 +47,7 @@ class ChannelIntegrationTest {
     private fun identity(): DeviceIdentity = DeviceIdentity(ByteArray(32) { 3 }, ByteArray(32) { 12 })
 
     private fun enqueueHost(forgeSignature: Boolean = false, holdCalls: Boolean = false, burst: Int = 0, welcomeDelay: Long = 0,
-        snapshotHead: Int = 5, reject: String? = null, screenBurst: Int = 0) {
+        snapshotHead: Int = 5, reject: String? = null, screenBurst: Int = 0, helloUrls: List<String> = emptyList()) {
         server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
             private lateinit var opener: FrameOpener
             private lateinit var sealer: FrameSealer
@@ -108,7 +110,10 @@ class ChannelIntegrationTest {
                     send(webSocket, buildJsonObject { put("id", id); put("ok", buildJsonObject { put("computerId", cid); put("name", "Paired computer") }) })
                     webSocket.close(4100, "paired")
                 } else {
-                    send(webSocket, buildJsonObject { put("id", id); put("ok", buildJsonObject { put("computerId", cid); put("signKey", hostKey.base64Url()) }) })
+                    send(webSocket, buildJsonObject { put("id", id); put("ok", buildJsonObject {
+                        put("computerId", cid); put("signKey", hostKey.base64Url())
+                        if (helloUrls.isNotEmpty()) put("urls", JsonArray(helloUrls.map { JsonPrimitive(it) }))
+                    }) })
                 }
             }
             private fun send(socket: WebSocket, inner: JsonObject) {
@@ -180,6 +185,13 @@ class ChannelIntegrationTest {
             assertEquals("hello", events.first().text("type"))
             assertEquals("Reviewer", HostClient.decodeBot(events.last())?.name)
         } finally { connected.close() }
+    }
+
+    @Test fun `a hello from a computer with many networks keeps its best sixteen addresses`() = runBlocking {
+        val urls = (1..30).map { "http://172.${it + 1}.0.1:19222" }
+        enqueueHost(helloUrls = urls)
+        val connected = withTimeout(5_000) { HostConnector.connect(computer(), identity()) }
+        try { assertEquals(urls.take(16), HostClient.hello(connected, computer()).urls) } finally { connected.close() }
     }
 
     @Test fun `a forged welcome never permits an encrypted request`() = runBlocking {

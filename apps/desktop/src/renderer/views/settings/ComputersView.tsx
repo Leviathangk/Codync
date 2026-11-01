@@ -35,8 +35,8 @@ export function ComputersView() {
   const sshState = useSSH()
   const cloud = useModel(app.cloud)
   const [editing, setEditing] = useState<{ profile: SSHProfile; isNew: boolean } | null>(null)
-  const [removingCopy, setRemovingCopy] = useState<CloudComputer | null>(null)
-  const removingOlder = removingCopy !== null && cloud.isOlderCopy(removingCopy)
+  const [removing, setRemoving] = useState<CloudComputer | null>(null)
+  const removingOlder = removing !== null && cloud.isOlderCopy(removing)
   const managed = app.managedStores
   // Every computer in the account but this one, the SSH computers too: their cards above are about managing them.
   const others = cloud.computers.filter((c) => c.computerId !== app.local?.computer.id)
@@ -78,7 +78,7 @@ export function ComputersView() {
             <Text as="div" size="callout" tone="secondary">{tr(`No other computers in your account yet.`)}</Text>
           ) : null}
           {others.map((computer) => (
-            <AccountComputerRow key={computer.computerId} computer={computer} olderCopy={cloud.isOlderCopy(computer)} onRemove={() => setRemovingCopy(computer)} />
+            <AccountComputerRow key={computer.computerId} computer={computer} olderCopy={cloud.isOlderCopy(computer)} onRemove={() => setRemoving(computer)} />
           ))}
         </div>
       </VStack>
@@ -87,13 +87,14 @@ export function ComputersView() {
         {editing ? <SSHProfileEditor key={editing.profile.id} profile={editing.profile} isNew={editing.isNew} /> : null}
       </Sheet>
       <Dialog
-        open={removingCopy !== null}
-        title={tr(removingOlder ? 'Remove the older {name}?' : 'Remove {name} from your account?').replaceAll('{name}', removingCopy?.name ?? 'computer')}
+        open={removing !== null}
+        title={tr(removingOlder ? 'Remove the older {name}?' : 'Remove {name} from the account?').replaceAll('{name}', removing?.name ?? 'computer')}
         message={tr(removingOlder
           ? "It's an earlier identity of {name} and can't be reached anymore. Removing it only cleans up your account."
-          : "It's offline. Removing it only cleans up your account.").replaceAll('{name}', removingCopy?.name ?? 'a computer')}
-        actions={removingCopy ? [{ title: 'Remove', destructive: true, action: () => void cloud.removeFromAccount(removingCopy.computerId) }] : []}
-        onClose={() => setRemovingCopy(null)}
+          // Offline may only mean asleep: removal unclaims it, and its own app won't add it back by itself.
+          : 'Devices that were approved through the account lose access to {name}. It comes back only when you add it to the account again on {name} itself.').replaceAll('{name}', removing?.name ?? 'a computer')}
+        actions={removing ? [{ title: 'Remove', destructive: true, action: () => void cloud.removeFromAccount(removing.computerId) }] : []}
+        onClose={() => setRemoving(null)}
       />
     </div>
   )

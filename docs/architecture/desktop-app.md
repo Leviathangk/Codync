@@ -104,8 +104,9 @@ The TUI connects to one host at a time, so it keeps its single roster.
   as an SMAppService agent; Linux starts its helper from the host, as before.
 - **Other computers in the account** are reached through this computer's own host and SSH
   tunnels only. The encrypted channel to account computers (`ChannelTransport`) wasn't ported:
-  the product targets one computer, so "Ask for access" rows show status only. An older copy of a
-  computer the app uses shows *Older copy · last seen …* with *Remove from account* (confirmed first).
+  the product targets one computer, so "Ask for access" rows show status only. Every offline row
+  has *Remove from account* (confirmed first); an older copy of a computer the app uses also reads
+  *Older copy · last seen …*.
 - **Updates**: electron-updater reads the release GitHub marks latest, and only the release gate
   (`tools/release-gate.py`) sets that mark
   ([holding releases](../reference/compatibility.md#holding-releases-for-the-app-store)).

@@ -2,9 +2,10 @@ import { promises as fs } from 'node:fs'
 import { basename } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { clipboard } from 'electron'
+import type { PickedFile } from '../shared/ipc'
 
 export async function readFiles(paths: string[]) {
-  const out: { name: string; data: Uint8Array }[] = []
+  const out: PickedFile[] = []
   for (const path of paths) {
     try {
       out.push({ name: basename(path), data: new Uint8Array(await fs.readFile(path)) })
@@ -27,7 +28,7 @@ export async function readClipboardFiles() {
     }
   }
   if (urls.length) return readFiles(urls.map((u) => fileURLToPath(u.replace(/\0+$/, ''))))
-  const out: { name: string; data: Uint8Array }[] = []
+  const out: PickedFile[] = []
   for (const item of items) {
     const image = item.types.find((t) => t === 'image/png' || t === 'image/jpeg')
     if (image && !item.types.includes('text/plain')) {

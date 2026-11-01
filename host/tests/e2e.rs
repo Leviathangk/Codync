@@ -202,7 +202,7 @@ async fn sent_messages_are_the_reply() {
         .to_owned();
     let send = |text: &str| json!({"botId": bot, "name": "send_message", "arguments": {"text": text}});
 
-    // Between turns there's no one to talk to.
+    // Before its agent ever ran there's no one to talk to.
     let idle = reqwest::Client::new()
         .post(format!("{}/api/chatCall", host.base))
         .bearer_auth(&host.token)

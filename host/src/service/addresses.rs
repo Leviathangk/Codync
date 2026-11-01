@@ -4,7 +4,7 @@ use serde_json::Value;
 use std::process::Command;
 use std::sync::LazyLock;
 
-/// Phones keep at most this many addresses, best first (the Android app refuses a longer list).
+/// The most addresses sent, best first: a phone keeps at most this many, and a longer list is cut to it.
 const MAX_ADDRESSES: usize = 16;
 
 /// Addresses the phone can try, best first: the ones set in `CODYNC_EXTERNAL_URL`, Tailscale, then LAN.
@@ -24,7 +24,7 @@ pub fn addresses(port: u16) -> Vec<String> {
             if o[0] == 100 && (64..128).contains(&o[1]) {
                 tailscale.push(format!("http://{ip}:{port}"));
             } else if ip.is_private() {
-                lan.push(format!("http://{ip}:{port}"));
+                lan.push(ip);
             }
         }
     }
@@ -39,9 +39,20 @@ pub fn addresses(port: u16) -> Vec<String> {
     }
     tailscale.sort();
     tailscale.dedup();
-    lan.sort();
+    lan.sort_by_key(|ip| (lan_rank(*ip), *ip));
     lan.dedup();
+    let lan = lan.into_iter().map(|ip| format!("http://{ip}:{port}"));
     EXTERNAL.iter().cloned().chain(tailscale).chain(lan).take(MAX_ADDRESSES).collect()
+}
+
+/// Home networks first, then office ones, so the cap drops the private ranges container and VM networks favor.
+// ponytail: guesses by range; ask the OS for the default route's interface if a LAN address still gets cut.
+fn lan_rank(ip: std::net::Ipv4Addr) -> u8 {
+    match ip.octets() {
+        [192, 168, ..] => 0,
+        [10, ..] => 1,
+        _ => 2,
+    }
 }
 
 /// A bridge that containers or VMs on this computer sit behind (Docker, Podman, Kubernetes, libvirt, LXD).
@@ -95,6 +106,15 @@ mod tests {
             ["https://codync.example.com", "http://10.0.0.2:8080"]
         );
         assert_eq!(external_urls(""), [] as [String; 0]);
+    }
+
+    #[test]
+    fn home_networks_rank_before_the_cap() {
+        let mut ips: Vec<std::net::Ipv4Addr> =
+            ["172.20.0.1", "10.0.0.10", "192.168.1.20", "10.0.0.9"].iter().map(|s| s.parse().unwrap()).collect();
+        ips.sort_by_key(|ip| (lan_rank(*ip), *ip));
+        let sorted: Vec<String> = ips.iter().map(ToString::to_string).collect();
+        assert_eq!(sorted, ["192.168.1.20", "10.0.0.9", "10.0.0.10", "172.20.0.1"]);
     }
 
     #[test]
