@@ -46,7 +46,7 @@ public struct Pairing: Hashable, Sendable {
               Data(base64URL: bk)?.count == 32,
               Data(base64URL: code)?.count == 16,
               RelayCrypto.computerId(signKey: skRaw) == id else { throw .invalid }
-        let urls = (q["urls"] ?? "").split(separator: ",").map(String.init).filter(Self.isDirectURL)
+        let urls = directURLs((q["urls"] ?? "").split(separator: ",").map(String.init))
         var cloud: URL?
         if let raw = q["cloud"], !raw.isEmpty {
             guard let u = URL(string: raw), Self.isCloudURL(u) else { throw .invalid }
@@ -64,6 +64,15 @@ public struct Pairing: Hashable, Sendable {
 
     /// The relay's pairing socket parameter.
     var offerId: String? { Data(base64URL: code).map(RelayCrypto.offerId(code:)) }
+
+    /// Phones keep at most this many direct addresses; a computer with many networks sends more, best first.
+    static let maxURLs = 16
+
+    /// The direct addresses kept from a computer's list (pairing link or `hello`): valid ones, once each, the best `maxURLs`.
+    static func directURLs(_ urls: [String]) -> [String] {
+        var seen = Set<String>()
+        return Array(urls.filter { isDirectURL($0) && seen.insert($0).inserted }.prefix(maxURLs))
+    }
 
     static func isDirectURL(_ s: String) -> Bool {
         guard let u = URL(string: s), u.scheme == "http" || u.scheme == "https", u.host() != nil else { return false }

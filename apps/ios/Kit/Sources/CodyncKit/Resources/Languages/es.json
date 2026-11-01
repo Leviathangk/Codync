@@ -1146,6 +1146,7 @@
   "Revoke {name}?": "¿Revocar {name}?",
   "Remove the older {name}?": "¿Eliminar el antiguo {name}?",
   "It's an earlier identity of {name} and can't be reached anymore. Removing it only cleans up your account.": "Es una identidad anterior de {name} que ya no está accesible. Eliminarla solo limpia tu cuenta.",
+  "Devices that were approved through the account lose access to {name}. It comes back only when you add it to the account again on {name} itself.": "Los dispositivos aprobados mediante la cuenta pierden el acceso a {name}. Solo vuelve cuando lo añades de nuevo a la cuenta desde el propio {name}.",
   "Any device signed in to your account gets full control of {name}: its files, terminals and bots, with no check here. If someone gets into your account, or Codync's cloud is ever compromised, they could add their own device and you'd have no chance to stop it. Devices paired with a QR code aren't affected.": "Cualquier dispositivo que inicie sesión en tu cuenta obtiene control total de {name}: sus archivos, terminales y bots, sin comprobación aquí. Si alguien accede a tu cuenta o la nube de Codync se ve comprometida, podría añadir su dispositivo sin que puedas impedirlo. Los dispositivos vinculados por QR no se ven afectados.",
   "Pair iPhone with {name}": "Vincular iPhone con {name}",
   "Waiting for your OK on the computer · {code}": "Esperando tu aprobación en la computadora · {code}",

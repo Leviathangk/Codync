@@ -39,7 +39,7 @@ data class Pairing(val computer: Computer, val code: String) {
                     name = params["name"]?.takeIf(String::isNotBlank) ?: "My computer",
                     signKey = requireNotNull(params["sk"]),
                     boxKey = requireNotNull(params["bk"]),
-                    urls = params["urls"].orEmpty().split(',').filter { it.isNotEmpty() && isDirectUrl(it) }.distinct(),
+                    urls = directUrls(params["urls"].orEmpty().split(',')),
                     cloud = params["cloud"]?.takeIf(String::isNotEmpty),
                 )
                 computer.validate()

@@ -1146,6 +1146,7 @@
   "Revoke {name}?": "撤銷 {name} 的訪問？",
   "Remove the older {name}?": "移除較早的 {name}？",
   "It's an earlier identity of {name} and can't be reached anymore. Removing it only cleans up your account.": "這是 {name} 較早的身份，已經連不上了。移除它只是清理你的賬戶。",
+  "Devices that were approved through the account lose access to {name}. It comes back only when you add it to the account again on {name} itself.": "透過賬戶批准的裝置會失去對 {name} 的訪問。只有在 {name} 本機上重新加入賬戶，它才會回來。",
   "Any device signed in to your account gets full control of {name}: its files, terminals and bots, with no check here. If someone gets into your account, or Codync's cloud is ever compromised, they could add their own device and you'd have no chance to stop it. Devices paired with a QR code aren't affected.": "登入了你賬戶的任何裝置都能完全控制 {name}：它的檔案、終端和 Bot，這裡不會再核對。如果有人進入你的賬戶，或 Codync 的雲被攻破，對方可以自己加一臺裝置，你沒有機會攔住。用二維碼配對的裝置不受影響。",
   "Pair iPhone with {name}": "讓 iPhone 與 {name} 配對",
   "Waiting for your OK on the computer · {code}": "等你在電腦上確認 · {code}",

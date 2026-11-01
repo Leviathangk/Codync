@@ -202,7 +202,7 @@ async fn sent_messages_are_the_reply() {
         .to_owned();
     let send = |text: &str| json!({"botId": bot, "name": "send_message", "arguments": {"text": text}});
 
-    // Between turns there's no one to talk to.
+    // Before its agent ever ran there's no one to talk to.
     let idle = reqwest::Client::new()
         .post(format!("{}/api/chatCall", host.base))
         .bearer_auth(&host.token)
@@ -236,6 +236,12 @@ async fn sent_messages_are_the_reply() {
         .map(|e| e["data"]["text"].as_str().unwrap())
         .collect();
     assert_eq!(finals, ["Found it.", "Fixing the typo now."]);
+
+    // Work the agent goes on with after its turn (a background subagent) still reaches the user.
+    host.call("chatCall", send("The background check passed.")).await;
+    let late =
+        host.wait_for(&bot, |e| e["kind"] == "agent" && e["data"]["text"] == "The background check passed.").await;
+    assert_eq!((&late["data"]["final"], &late["data"]["author"]), (&json!(true), &json!(bot)));
 }
 
 #[tokio::test]
