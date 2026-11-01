@@ -3,6 +3,7 @@
 Every issue and pull request from someone other than the maintainer gets a security check before anything is done
 with it: before approving its CI runs, checking it out, building or running it, running `after-change` on it, merging
 it, or replying with steps to follow. Record the result in the review (or say "security check: nothing found").
+It is the first step of the [issue and PR review](issue-pr-review.md).
 
 ## Pull requests
 

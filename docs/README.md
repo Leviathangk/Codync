@@ -24,7 +24,7 @@ Source review, a passing build, local integration tests and production acceptanc
 | Set up accounts, approvals or desktop SSH | [Accounts and SSH](guides/accounts-and-ssh.md) |
 | Check connectors against live services | [Connector verification](guides/connector-verification.md) |
 | Change transport or cryptography | [Remote protocol](reference/remote-relay.md) and [shared vectors](reference/fixtures/README.md) |
-| Review an external issue or pull request | [Security check](guides/security-check.md) (prompt injection included) |
+| Review an issue or pull request | [Issue and PR review](guides/issue-pr-review.md) (the `review-issue-pr` workflow) and its [security check](guides/security-check.md) |
 | Look into errors or failed turns users hit | [Usage analytics](features/analytics.md), [iPhone crash tracing](guides/iphone-crash-tracing.md), [investigations](#investigations) |
 
 ## Features

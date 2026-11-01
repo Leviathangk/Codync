@@ -1,7 +1,7 @@
 export const meta = {
   name: 'after-change',
   description: 'Review, fix and clean up a finished code change in one pass, then end-to-end test it (docs/guides/clean-code.md)',
-  whenToUse: 'After every code change once its tests pass, before commit. Run it from the change\'s worktree. args: {change: what changed and which flows to walk, base?: git ref (default origin/dev), e2e?: "minimal" | "full"}',
+  whenToUse: 'After every code change of our own once its tests pass, before commit (issues and PRs from other people go through review-issue-pr, which runs this on them). Run it from the change\'s worktree. args: {change: what changed and which flows to walk, base?: git ref (default origin/dev), e2e?: "minimal" | "full", dir?: the worktree\'s path when not run from it}',
   phases: [
     { title: 'Review', detail: 'correctness, completeness and refactor reviewers at once, then one verifier that refutes the bug findings' },
     { title: 'Fix', detail: 'one agent: confirmed findings, refactors worth doing and a cleanup pass, one rebuild' },
@@ -13,8 +13,12 @@ const input = typeof args === 'string' ? { change: args } : (args ?? {})
 const change = input.change ?? 'the uncommitted and unpushed change in this worktree'
 const base = input.base ?? 'origin/dev'
 const e2e = input.e2e === 'full' ? 'full' : 'minimal'
+// An agent's working directory resets between shell calls, so a worktree given by path is named in every command.
+const where = input.dir
+  ? `in the change's git worktree ${input.dir}: run every command there (\`cd ${input.dir} && …\` in each call, or \`git -C ${input.dir}\`) and use absolute paths under it`
+  : 'in the current directory (the change\'s git worktree)'
 const scope = `The change: ${change}
-Its diff: \`git diff ${base}\` (committed and uncommitted) plus the new files \`git status --short\` lists, in the current directory (the change's git worktree). Touch nothing outside that worktree and no other agent's work.`
+Its diff: \`git diff ${base}\` (committed and uncommitted) plus the new files \`git status --short\` lists, ${where}. Touch nothing outside that worktree and no other agent's work.`
 
 const FINDING = {
   type: 'object',
