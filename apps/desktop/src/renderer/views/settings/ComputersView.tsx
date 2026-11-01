@@ -36,6 +36,7 @@ export function ComputersView() {
   const cloud = useModel(app.cloud)
   const [editing, setEditing] = useState<{ profile: SSHProfile; isNew: boolean } | null>(null)
   const [removingCopy, setRemovingCopy] = useState<CloudComputer | null>(null)
+  const removingOlder = removingCopy !== null && cloud.isOlderCopy(removingCopy)
   const managed = app.managedStores
   // Every computer in the account but this one, the SSH computers too: their cards above are about managing them.
   const others = cloud.computers.filter((c) => c.computerId !== app.local?.computer.id)
@@ -87,8 +88,10 @@ export function ComputersView() {
       </Sheet>
       <Dialog
         open={removingCopy !== null}
-        title={tr('Remove the older {name}?').replaceAll('{name}', removingCopy?.name ?? 'computer')}
-        message={tr("It's an earlier identity of {name} and can't be reached anymore. Removing it only cleans up your account.").replaceAll('{name}', removingCopy?.name ?? 'a computer')}
+        title={tr(removingOlder ? 'Remove the older {name}?' : 'Remove {name} from your account?').replaceAll('{name}', removingCopy?.name ?? 'computer')}
+        message={tr(removingOlder
+          ? "It's an earlier identity of {name} and can't be reached anymore. Removing it only cleans up your account."
+          : "It's offline. Removing it only cleans up your account.").replaceAll('{name}', removingCopy?.name ?? 'a computer')}
         actions={removingCopy ? [{ title: 'Remove', destructive: true, action: () => void cloud.removeFromAccount(removingCopy.computerId) }] : []}
         onClose={() => setRemovingCopy(null)}
       />
@@ -304,7 +307,10 @@ function CodyncVersionRow({ store }: { store: BotStore }) {
   )
 }
 
-/** An account computer this app isn't authorized on, or one it uses under an earlier identity (`olderCopy`). */
+/**
+ * An account computer this app isn't authorized on, or one it uses under an earlier identity (`olderCopy`). An
+ * offline one can be removed: a computer that was reset or given away never comes back under that identity.
+ */
 function AccountComputerRow({ computer, olderCopy, onRemove }: { computer: CloudComputer; olderCopy: boolean; onRemove: () => void }) {
   const tr = useTr()
   return (
@@ -318,7 +324,7 @@ function AccountComputerRow({ computer, olderCopy, onRemove }: { computer: Cloud
           <Text size="caption" tone={olderCopy ? 'tertiary' : 'secondary'}>{tr(accountComputerStatus(computer, olderCopy))}</Text>
         </div>
         <Spacer />
-        {olderCopy ? <IconButton title="Remove from account" icon="trash" onClick={onRemove} /> : null}
+        {computer.online ? null : <IconButton title="Remove from account" icon="trash" onClick={onRemove} />}
       </div>
     </div>
   )

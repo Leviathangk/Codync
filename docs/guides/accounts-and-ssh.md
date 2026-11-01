@@ -207,8 +207,9 @@ The desktop app attaches this computer's host and its SSH computers over loopbac
 follow into whichever account is active. The account's other computers are not reached
 directly (the encrypted channel wasn't ported to the desktop app), so their
 "Ask for access" rows show status only. An older copy of a computer the app uses shows
-*Older copy · last seen …* with *Remove from account* (`DELETE /v1/computers/{id}`, confirmed
-first). See [desktop app](../architecture/desktop-app.md).
+*Older copy · last seen …*. Every offline row has *Remove from account* (`DELETE /v1/computers/{id}`,
+confirmed first), so a computer that was reset or given away can be cleaned up even when its
+name changed. See [desktop app](../architecture/desktop-app.md).
 
 **Computers & devices** (Settings) shows, for this computer and each SSH computer:
 *Reach from anywhere* (`setCloud`, on/off; the host's build decides which cloud),

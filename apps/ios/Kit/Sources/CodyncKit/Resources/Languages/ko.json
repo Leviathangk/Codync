@@ -1146,6 +1146,8 @@
   "Revoke {name}?": "{name}의 접근 권한을 취소할까요?",
   "Remove the older {name}?": "이전 {name}을 제거할까요?",
   "It's an earlier identity of {name} and can't be reached anymore. Removing it only cleans up your account.": "더 이상 접근할 수 없는 {name}의 이전 식별 정보입니다. 제거해도 계정만 정리됩니다.",
+  "Remove {name} from your account?": "{name}을 계정에서 제거할까요?",
+  "It's offline. Removing it only cleans up your account.": "오프라인 상태입니다. 제거해도 계정만 정리됩니다.",
   "Any device signed in to your account gets full control of {name}: its files, terminals and bots, with no check here. If someone gets into your account, or Codync's cloud is ever compromised, they could add their own device and you'd have no chance to stop it. Devices paired with a QR code aren't affected.": "계정에 로그인한 모든 기기는 여기서 별도의 확인 없이 {name}의 파일, 터미널, 봇을 완전히 제어할 수 있습니다. 누군가 계정에 침입하거나 Codync 클라우드가 침해되면 자신의 기기를 추가할 수 있으며 이를 막을 기회가 없습니다. QR 코드로 페어링한 기기는 영향을 받지 않습니다.",
   "Pair iPhone with {name}": "{name}에 iPhone 페어링",
   "Waiting for your OK on the computer · {code}": "컴퓨터에서 승인 대기 중 · {code}",
